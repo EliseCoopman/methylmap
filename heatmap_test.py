@@ -136,19 +136,24 @@ def args_heatmap(files, window, expand, gtf, simplify):
 
         dfs.append(table.rename(columns={'methylated_frequency': name}))
     overviewtable = dfs[0].join(dfs[1:], how='outer')
-
     overviewtable.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
 
     heatmap = px.imshow(overviewtable, text_auto=True)
     heatmap.update_xaxes(tickangle=45, tickfont=dict(size=10))
     heatmap.update_yaxes(tickfont=dict(size=10))
+    
+    
+    num_methrows = len(table["MeanPosition"])
+    annot_row = num_methrows
+    annot_axis = f'axis{annot_row}'
 
     if gtf:
-        sys.stderr.write("0")
         annotation_traces, y_max = gtf_annotation(gtf, region, simplify)
         for annot_trace in annotation_traces:
-            heatmap.append_trace(trace=annot_trace, row=1, col=1)
-
+            heatmap.append_trace(trace=annot_trace, row=annot_row, col=1)
+        heatmap["layout"][annot_axis].update(range=[-2,y_max + 1], showgrid=False,zeroline=False, showline=False, ticks='',showticklables=False)
+        heatmap["layout"]["xaxis"].update(tickformat='g', seperatethousands=True,range=[region.begin,region.end])
+        heatmap["layout"].update(barmode='overlay',title="Heatmap methylation frequency", hovermode='closest', plot_bgcolor='rgba(0,0,0,0)')
     html = heatmap.to_html()
 
     with open(args.outfig, 'w') as f:
@@ -229,23 +234,24 @@ def parse_annotation(gff, region, simplify=False):
     annotationfile = pd.read_csv(tabix_stream.stdout, sep='\t', header=None, names=[
                                  "chromosome", "source", "feature_type", "begin", "end", "score", "strand", "phase", "attributes"])
     #else: #######
-    # annotationfile.to_csv(
-    #     "/home/ecoopman/outputresults/annotationtabletest.tsv", sep="\t", na_rep=np.NaN, header=True)
+    annotationfile.to_csv(
+        "/home/ecoopman/outputresults/annotationtabletest.tsv", sep="\t", na_rep=np.NaN, header=True)
 
     annotationfile["attributes"] = annotationfile.attributes.str.split(";")
     for x in annotationfile.attributes:
         for i in x:
-            if i.startswith("gene_name"):
+            if i.startswith ("locus_tag") or i.startswith("gene_name"): #wat als beide aanwezig zijn?
                 annotationfile['gene'] = i.split("=")[1]
             if i.startswith("transcript_id"):
                 annotationfile['transcript'] = i.split("=")[1]
     
-    for x in annotationfile.gene:
-        if x == np.NaN:
-            for i in annotationfile.attributes:
-                for j in i:
-                    if j.startswith("locus_tag"):
-                        annotationfile.gene = j.split("=")[1]
+    # for x in annotationfile.gene:  ###wat als er geen annotationfile.gene colomn is gemaakt wegens ontbreken gene over alle posities?
+    #     if x == np.NaN:
+    #         for i in annotationfile.attributes:
+    #             for j in i:
+    #                 if j.startswith("locus_tag"):
+    #                     annotationfile.gene = j.split("=")[1]
+
 
     annotationfile.drop(["source", "feature_type", "score",
                         "phase","attributes"], axis=1, inplace=True)
