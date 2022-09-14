@@ -1,3 +1,4 @@
+from cgi import test
 import dash_bio
 from scipy.spatial.distance import pdist, squareform
 import plotly.figure_factory as ff
@@ -19,11 +20,7 @@ import subprocess
 import gzip
 from pathlib import Path
 import plotly.express as px
-
-test 2
-test 3
-test 4
-
+test test2 test3 test4 test5
 
 
 
@@ -57,9 +54,15 @@ def get_args():
             "Input and names should have same length, length files = %s and length names = %s" % (d, e))
     return args
 
-
 args = get_args()
 
+test 
+
+test
+
+testtest
+
+test
 
 class Region(object):
     def __init__(self, region):

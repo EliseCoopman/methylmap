@@ -1,4 +1,4 @@
-12/09/2022:
+### V12/09/2022:
 - --expand option
 - def parse_annotation(): get information attributes: gene_name, transcript_id, locus_tag
 
@@ -11,7 +11,8 @@ annotationfile["attributes"] = annotationfile.attributes.str.split(";")
                 annotationfile['gene'] = i.split("=")[1]
             if i.startswith("transcript_id"):
                 annotationfile['transcript'] = i.split("=")[1]
-- def args_heatmap(): testing:
+```python                
+def args_heatmap(): testing:
     annot_axis = f'axis{annot_row}'
     num_methrows = len(table["MeanPosition"])
     annot_row = num_methrows
@@ -23,3 +24,4 @@ annotationfile["attributes"] = annotationfile.attributes.str.split(";")
         heatmap["layout"]["xaxis"].update(tickformat='g', seperatethousands=True,range=[region.begin,region.end])
         heatmap["layout"].update(barmode='overlay',title="Heatmap methylation frequency", hovermode='closest', plot_bgcolor='rgba(0,0,0,0)')
     html = heatmap.to_html()
+```
