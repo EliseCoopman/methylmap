@@ -20,6 +20,12 @@ import gzip
 from pathlib import Path
 import plotly.express as px
 
+test 2
+test 3
+test 4
+
+
+
 
 def get_args():
     parser = ArgumentParser(
@@ -234,23 +240,24 @@ def parse_annotation(gff, region, simplify=False):
     annotationfile = pd.read_csv(tabix_stream.stdout, sep='\t', header=None, names=[
                                  "chromosome", "source", "feature_type", "begin", "end", "score", "strand", "phase", "attributes"])
     #else: #######
-    annotationfile.to_csv(
-        "/home/ecoopman/outputresults/annotationtabletest.tsv", sep="\t", na_rep=np.NaN, header=True)
+
+
+
+
+    # annotationfile.to_csv(
+    #     "/home/ecoopman/outputresults/annotationtabletest.tsv", sep="\t", na_rep=np.NaN, header=True)
 
     annotationfile["attributes"] = annotationfile.attributes.str.split(";")
     for x in annotationfile.attributes:
         for i in x:
-            if i.startswith ("locus_tag") or i.startswith("gene_name"): #wat als beide aanwezig zijn?
+            if i.startswith("gene_name"):
                 annotationfile['gene'] = i.split("=")[1]
             if i.startswith("transcript_id"):
                 annotationfile['transcript'] = i.split("=")[1]
+
+
     
-    # for x in annotationfile.gene:  ###wat als er geen annotationfile.gene colomn is gemaakt wegens ontbreken gene over alle posities?
-    #     if x == np.NaN:
-    #         for i in annotationfile.attributes:
-    #             for j in i:
-    #                 if j.startswith("locus_tag"):
-    #                     annotationfile.gene = j.split("=")[1]
+
 
 
     annotationfile.drop(["source", "feature_type", "score",
