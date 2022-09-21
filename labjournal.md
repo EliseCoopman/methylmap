@@ -25,3 +25,15 @@ def args_heatmap(): testing:
         heatmap["layout"].update(barmode='overlay',title="Heatmap methylation frequency", hovermode='closest', plot_bgcolor='rgba(0,0,0,0)')
     html = heatmap.to_html()
 ```
+20/09/2022:
+- create subplots for annotation trace
+- make heatmap using plotly graph_objects instead of plotly express to make subplots
+- still a problem with displaying the calculation frequencies as text in the heatmap
+- layout subplot (1,1) for the annotation track
+
+21/09/2022:
+- fix expand problem in annotation trace
+- add def file_sniffer(), def is_gz_file(), def is_cram_file(), def is_bam_file(), def get_data(), def read_mods()
+- write def parse_nanopolish(), rewrite args_heatmap() (not yet finished)
+- problem: input overviewtable is one file, input nanopolish_calc_meth_freq or bam/cram are multiple files
+

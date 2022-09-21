@@ -28,4 +28,6 @@ rule heatmap:
     log:
         os.path.join(outdir, "logs/heatmap.log")
     shell:
-         "python heatmap_test.py --files {input.files} --window chr17:44345246-44353106 --expand 1000000 --gff {input.gff} --outtable {output.outtable} --outfig {output.outfig} 2> {log}"
+         "python heatmap_test.py --files {input.files} --window chr17:44345246-44353106 --expand 10000 --gff {input.gff} --outtable {output.outtable} --outfig {output.outfig} 2> {log}"
+
+
