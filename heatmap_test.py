@@ -127,13 +127,13 @@ def read_mods(files, names, region):
     input can also be raw data per read, optionally phased
     which will return a dataframe with 'read', 'chromosome', 'pos', 'log_lik_ratio', 'strand'
     """
-    # checkt alleen eerste file in de list met alle files
+    # checkt alleen eerste file in de list met alle files, niet ideaal, hoogstwss ook probleem wanneer enkel overviewtable als input o
     file_type = file_sniffer(files[0]) # checkt alleen eerste file in de list met alle files
     logging.info(f"File {files[0]} is of type {file_type}")
     try:
         if file_type == "nanopolish_calc_meth_freq":
             return parse_nanopolish(files, names, region)
-        # elif file_type == "overviewtable": 
+        # elif file_type == "overviewtable":  #nog niet volledig werkende
         #     return parse_overviewtable(files)
         # elif file_type in ["cram", "bam"]: ####def parse_cram() moet nog geschreven worden
         #     return parse_cram(filename, file_type, name, window) 
