@@ -1,40 +1,30 @@
-import dash_bio
-from scipy.spatial.distance import pdist, squareform
-import plotly.figure_factory as ff
+import plotly
 import plotly.graph_objects as go
-import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 from plotly.colors import DEFAULT_PLOTLY_COLORS as plcolors
 import itertools
 from argparse import ArgumentParser
-from turtle import title
 import pandas as pd
 import os
+import gzip
 import sys
 import numpy as np
 import pyranges as pr
 from pathlib import Path
 import logging
-import sys
 import subprocess
-import gzip
-from pathlib import Path
-import plotly.express as px
-from plotly.subplots import make_subplots
 
 
 def get_args():
     parser = ArgumentParser(
         description="Create heatmap of methylation frequencies.")
-    action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("-f", "--files",
-                        nargs="+", help="Haplotype specific methylation frequency files.")
-    action.add_argument("-t",
-                        "--table", help="Table with methylation frequencies of all samples over region of interest.")
+    parser.add_argument("-f", "--files",
+                        nargs="+", help="Haplotype specific methylation frequency files.")          
     parser.add_argument("-w", "--window",
                         help="Region to visualise.",
                         required=True if "--example" not in sys.argv else False)  # chr17:44345246-44353106
     parser.add_argument("-n", "--names", nargs="+", default=[])
-    parser.add_argument("--gtf", "--gff", help="gtf/gff3 file")
+    parser.add_argument("--gff", "--gtf", help="gtf/gff3 file")
     parser.add_argument(
         "--expand", help="number of base pairs to expand the window with in both directions")
     parser.add_argument("--outtable",
@@ -42,7 +32,7 @@ def get_args():
     parser.add_argument("--outfig",
                         help="File to write output heatmap to.")
     args = parser.parse_args()
-    if len(args.names) == 0:
+    if len(args.names) == 0:  # werkt niet wanneer overview table als input: args.names input kan niet van basename files gehaald worden; ofwel list met names als input, ofwel optie om de header als names te gebruiken, moet nog geschreven worden
         for b in args.files:
             c = b.rsplit('.', 2)[0]
             args.names.append(os.path.basename(c))
@@ -69,7 +59,7 @@ class Region(object):
                     pass
                 self.begin, self.end = [int(i) for i in interval.split('-')]
                 self.begin = self.begin - int(expand)
-                if expand:                                  #when expand, make region larger
+                if expand: 
                     self.end = self.end + int(expand)
                     self.start = self.begin
                 self.size = self.end - self.begin
@@ -97,31 +87,38 @@ class Transcript(object):
         self.end = max(list(itertools.chain.from_iterable(self.exon_tuples)))
         self.color = ""
 
-#def main():
+# def main():
 
 
+def meth_browser(files, names=False, window=False, expand=False, gff=False, simplify=False):
+    if window:
+        region = Region(window, expand)
+    heatmapfig = 1
+    if gff:
+        annotationfig = 1
+    else:
+        annotationfig = 0
+    num_col = heatmapfig + annotationfig  # number of subplots (columns) needed
+    subplots = create_subplots(num_col)
+
+    meth_data = read_mods(files, names, region) # overviewtable with all meth frequencies of all samples
+    fig = plot_methylation(subplots, meth_data, num_col)
+    
+    if gff:
+        annotation_traces = gff_annotation(gff, region, simplify)
+        for annot_trace in annotation_traces:
+            fig.append_trace(trace=annot_trace, row=1, col=1)
+        fig.update_xaxes(title_text="", showticklabels=False,
+                         zeroline=False, row=1, col=1)
+        fig.update_yaxes(title_text="", showticklabels=True,
+                         zeroline=False, row=1, col=1)
+    html = fig.to_html()
+    with open(args.outfig, 'w') as f:
+        f.write(html)
+    return meth_data, fig
 
 
-
-#def meth_browser(meth_data, window, expand=False, gft=False, simplify=False):
-
-
-
-
-
-def get_data(files, names, window):
-    """
-    Import methylation data from all files in the list methylation_files
-    Data can in various formats
-    - nanopolish -> calculate_methylation_frequency.py output
-    - table in .tsv/.tsv.gz file
-    - cram
-    data is extracted within the window args.window
-    """
-    return [read_mods(f, n, window) for f, n in zip(files, names)] #probleem: indien nanopolish_calc_meth_freq input zijn er meerdere files als input, indien overviewtable is er maar 1 file als input
-
-
-def read_mods(filename, id_name, window, expand):
+def read_mods(files, names, region):
     """
     converts a file from nanopolish to a pandas dataframe
     input can be from calculate_methylation_frequency
@@ -130,35 +127,35 @@ def read_mods(filename, id_name, window, expand):
     input can also be raw data per read, optionally phased
     which will return a dataframe with 'read', 'chromosome', 'pos', 'log_lik_ratio', 'strand'
     """
-    file_type = file_sniffer(filename)
-    logging.info(f"File {filename} is of type {file_type}")
+    # checkt alleen eerste file in de list met alle files
+    file_type = file_sniffer(files[0]) # checkt alleen eerste file in de list met alle files
+    logging.info(f"File {files[0]} is of type {file_type}")
     try:
-        if file_type.startswith("nanopolish_calc_meth_freq"):
-            return parse_nanopolish(filename, id_name, window, expand) 
-        elif file_type.startswith("overviewtable")
-            return parse_overviewtable()
-        # elif file_type in ["cram", "bam"]:
-        #     return parse_cram(filename, file_type, name, window) #def parse_cram() moet nog geschreven worden
+        if file_type == "nanopolish_calc_meth_freq":
+            return parse_nanopolish(files, names, region)
+        # elif file_type == "overviewtable": 
+        #     return parse_overviewtable(files)
+        # elif file_type in ["cram", "bam"]: ####def parse_cram() moet nog geschreven worden
+        #     return parse_cram(filename, file_type, name, window) 
     except Exception as e:
-        logging.error(f"Error processing {filename}.")
+        logging.error(f"Error processing {files[0]}.")
         logging.error(e, exc_info=True)
-        sys.stderr.write(f"\n\n\nError processing {filename}!\n")
+        sys.stderr.write(f"\n\n\nError processing {files[0]}!\n")
         sys.stderr.write("\n\n\nDetailed error:\n")
         raise
 
 
-def parse_nanopolish(files, names, window, expand): #input files = calculate_methylation_frequency.py output files
+def parse_nanopolish(files, names, region): # input files = calculate_methylation_frequency.py output files
     dfs = []
-    region = Region(window, expand)
     for file, name in zip(files, names):
-        if window:  #file inlezen met tabix voor gekozen regio
-            if Path(file + ".tbi").is_file():
+        if region:  # file inlezen met tabix voor gekozen regio
+            if Path(file + ".tbi").is_file():  # nog optie schrijven om tbi file te maken
                 logging.info(f"Reading {file} using a tabix stream.")
                 rg = f"{region.chromosome}:{region.begin}-{region.end}"
                 try:
                     tabix_stream = subprocess.Popen(['tabix', file, rg],
-                                                    stdout=subprocess.PIPE,
-                                                    stderr=subprocess.PIPE)
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE)
                 except FileNotFoundError as e:
                     logging.error("Error when opening a tabix stream.")
                     logging.error(e, exc_info=True)
@@ -167,111 +164,52 @@ def parse_nanopolish(files, names, window, expand): #input files = calculate_met
                     sys.stderr.write("Is tabix installed and on the PATH?.")
                     raise
                 header = gzip.open(file, 'rt').readline().rstrip().split('\t')
-                df = pd.read_csv(tabix_stream.stdout,
-                                 sep='\t', header=None, names=header)
+                table = pd.read_csv(tabix_stream.stdout,
+                                sep='\t', header=None, names=header)
                 logging.info("Read the file in a dataframe.")
+            # else: # zelf .tbi file maken #####Dit stuk code werkt nog niet: hoe teruggaan naar 'if' hierboven wanneer deze else is uitgevoerd?
+            #     try:  
+            #         with open(file) as f:
+            #             subprocess.Popen(["tabix","-S1", "-s1", "-b2", "-e3", file], stdout=f)
+            #     except FileNotFoundError as e:
+            #         logging.error("Error when making a .tbi file.")
+            #         logging.error(e, exc_info=True)
+            #         sys.stderr.write(
+            #             "\n\nERROR when making a .tbi file.\n")
+            #         sys.stderr.write("Is tabix installed and on the PATH?.")
+            #         raise
+            #     #return parse_nanopolish(files, names, region) #geen goed idee, telkens volledig opnieuw beginnen, beter naar 'if' teruggaan dan helemaal naar begin
+
+                
+        #probleem wanneer én geen .tbi file beschikbaar én van file kan geen .tbi file gemaakt worden
         else:
-            df = pd.read_csv(file, sep="\t") #telkens hele file inlezen
+            table = pd.read_csv(file, sep="\t")  # telkens hele file inlezen
             logging.info("Read the file in a dataframe.")
 
-        df = pr.PyRanges(df.drop(['group_sequence', 'called_sites_methylated',
-                                  'num_motifs_in_group', "called_sites"], axis=1).rename(
+        df = pr.PyRanges(table.drop(['group_sequence', 'called_sites_methylated',
+                                     'num_motifs_in_group', "called_sites"], axis=1).rename(
             columns={"start": "Start", "chromosome": "Chromosome", "end": "End"}))
         table = df.df
         table["position"] = (table["Start"] + table["End"])/2
         table = table.set_index("position").drop(
             ["Chromosome", "Start", "End"], axis=1)
-        return dfs.append(table.rename(columns={'methylated_frequency': name})) #output is an overview table with position as index and for each sample a column with all the methylation frequencies
-    
-#def parse_overviewtable():
-    #input overviewtable inlezen
-
-#def parse_cram():
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def args_heatmap(files, window, expand, gtf, simplify):
-    dfs = []
-    region = Region(window, expand)
-    for file, name in zip(files, args.names):
-        if window:
-            if Path(file + ".tbi").is_file():
-                logging.info(f"Reading {file} using a tabix stream.")
-                rg = f"{region.chromosome}:{region.begin}-{region.end}"
-                try:
-                    tabix_stream = subprocess.Popen(['tabix', file, rg],
-                                                    stdout=subprocess.PIPE,
-                                                    stderr=subprocess.PIPE)
-                except FileNotFoundError as e:
-                    logging.error("Error when opening a tabix stream.")
-                    logging.error(e, exc_info=True)
-                    sys.stderr.write(
-                        "\n\nERROR when opening a tabix stream.\n")
-                    sys.stderr.write("Is tabix installed and on the PATH?.")
-                    raise
-                header = gzip.open(file, 'rt').readline().rstrip().split('\t')
-                df = pd.read_csv(tabix_stream.stdout,
-                                 sep='\t', header=None, names=header)
-        else:
-            df = pd.read_csv(file, sep="\t")
-
-        df = pr.PyRanges(df.drop(['group_sequence', 'called_sites_methylated',
-                                  'num_motifs_in_group', "called_sites"], axis=1).rename(
-            columns={"start": "Start", "chromosome": "Chromosome", "end": "End"}))
-        logging.info("Read the file in a dataframe.")
-
-        table = df.df
-
-        table["MeanPosition"] = (table["Start"] + table["End"])/2
-
-        table = table.set_index("MeanPosition").drop(
-            ["Chromosome", "Start", "End"], axis=1)
-
         dfs.append(table.rename(columns={'methylated_frequency': name}))
     overviewtable = dfs[0].join(dfs[1:], how='outer')
-    overviewtable.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
-    samplelist = list(overviewtable)
-    positionlist = list(reversed(overviewtable.index.values.tolist()))
-    overview = overviewtable.to_numpy()
-    overviewarray = np.flip(overview, 0) 
+    overviewtable.to_csv(args.outtable, sep="\t",
+                         na_rep=np.NaN, header=True)  # output is an overview table with position as index and for each sample a column with all the methylation frequencies
+    return overviewtable
+
+
+# def parse_overviewtable(files): #overviewtable input option not yet working
+#     return pd.read_table(files)
     
-    heatmap = make_subplots(rows= 1, cols = 2, column_widths=[0.1, 0.9], horizontal_spacing=0.001, shared_yaxes=True) #indien geen gtf file: optie voor geen subplots toevoegen (moet not "algemener" geschreven worden)
-    heatmap.add_trace(go.Heatmap(z=overviewarray, x=samplelist, y=positionlist), row=1, col=2)
-    # heatmap.add_trace(go.Heatmap(z=overviewarray, x=samplelist, y=positionlist, text=overviewarray,
-    #                   texttemplate="%{text}", textfont={"size": 1}), row=1, col=2) #meth frequencies in de heatmap
-    heatmap.update_xaxes(tickangle=45, tickfont=dict(size=10), row=1, col=2) 
-    heatmap.update_yaxes(tickfont=dict(size=10),row=1,col=2)
+# def parse_cram():
+    # input cram files inlezen
 
-    if gtf:
-        annotation_traces, x_pos = gtf_annotation(gtf, region, simplify)
-        for annot_trace in annotation_traces:
-            heatmap.append_trace(trace=annot_trace, row=1, col=1)
-            heatmap.update_xaxes(title_text="", showgrid=False,
-                                 showticklabels=False, zeroline=False, row=1, col=1)
-            heatmap.update_yaxes(title_text="", showgrid=False,
-                                 showticklabels=True, zeroline=False, row=1, col=1)
-            heatmap.update_layout({'plot_bgcolor': 'rgba(0,0,0,0)','paper_bgcolor':'rgba(0,0,0,0)',},title="methylation frequency")
-    html = heatmap.to_html()  # titel over hele figuur toevoegen
 
-    with open(args.outfig, 'w') as f:
-        f.write(html)
-    return overviewtable, heatmap
-
-def gtf_annotation(gtf, region, simplify=False):
+def gff_annotation(gff, region, simplify):
     result = []
-    annotation = parse_annotation(gtf, region, simplify)
+    annotation = parse_annotation(gff, region, simplify)
     if annotation:
         for x_pos, transcript in enumerate(annotation):
             line = make_per_gene_annot_line_trace(transcript, region, x_pos)
@@ -279,9 +217,9 @@ def gtf_annotation(gtf, region, simplify=False):
                      for begin, end in transcript.exon_tuples
                      if region.begin < begin and region.end > end]
             result.extend([line, *exons])
-        return result, x_pos
+        return result
     else:
-        return result, 0
+        return result
 
 
 def annot_file_type(annot_file):
@@ -318,14 +256,14 @@ def assign_colors_to_genes(transcripts):
         t.color = colordict[t.gene]
 
 
-def parse_annotation(gff, region, simplify=False):
+def parse_annotation(gff, region, simplify):
     type = annot_file_type(gff)
     logging.info(f"Parsing {type} file...")
     """
     Parse the gff and select the relevant region as determined by the window
     return as Transcript objects
     """
-    if Path(gff + ".tbi").is_file():
+    if Path(gff + ".tbi").is_file():  # nog optie schrijven om tbi file te maken
         logging.info(f"Reading {gff} using a tabix stream.")
         rg = f"{region.chromosome}:{region.begin}-{region.end}"
         try:
@@ -339,12 +277,21 @@ def parse_annotation(gff, region, simplify=False):
                 "\n\nERROR when opening a tabix stream.\n")
             sys.stderr.write("Is tabix installed and on the PATH?.")
             raise
+    else: #zelf .tbi file maken en terug naar begin (parse_annotation()) gaan, dit stuk code werkt!
+        try:
+            with open(gff) as f:
+                subprocess.Popen(['tabix', '-s1', '-b4', '-e5', gff], stdout=f) #possible problem: -S, -s, -b, -e zijn anders in andere gff files
+        except FileNotFoundError as e:
+            logging.error("Error when making a .tbi file.")
+            logging.error(e, exc_info=True)
+            sys.stderr.write(
+                    "\n\nERROR when making a .tbi file.\n")
+            sys.stderr.write("Is tabix installed and on the PATH?.")
+            raise
+        return parse_annotation(gff, region, simplify=False)
     annotationfile = pd.read_csv(tabix_stream.stdout, sep='\t', header=None, names=[
                                  "chromosome", "source", "feature_type", "begin", "end", "score", "strand", "phase", "attributes"])
-    #else: #######
-
-    annotationfile.to_csv(
-        "/home/ecoopman/outputresults/annotationtabletest.tsv", sep="\t", na_rep=np.NaN, header=True)
+    #probleem wanneer én geen .tbi file beschikbaar én van file kan geen .tbi file gemaakt worden; annotationfile zonder tabix inlezen en dan window selecteren?
 
     gene = []
     transcript = []
@@ -444,11 +391,11 @@ def file_sniffer(filename):
     if not Path(filename).is_file():
         sys.exit(
             f"\n\nERROR: File {filename} does not exist, please check the path!\n")
-    if is_bam_file(filename): #input BAM
+    if is_bam_file(filename):  # input BAM
         return "bam"
-    if is_cram_file(filename): #input CRAM
+    if is_cram_file(filename):  # input CRAM
         return "cram"
-    if is_gz_file(filename): #input: calculate_methylation_frequency.py output (.tsv or .tsv.gz) OR own overview table (.tsv or .tsv.gz)
+    if is_gz_file(filename):  # input: calculate_methylation_frequency.py output (.tsv or .tsv.gz) OR own overview table (.tsv or .tsv.gz)
         import gzip
 
         header = gzip.open(filename, "rt").readline()
@@ -456,9 +403,11 @@ def file_sniffer(filename):
         header = open(filename, "r").readline()
 
     if "num_motifs_in_group" in header:
-        return "nanopolish_calc_meth_freq" #calculate_methylation_frequency.py output as input
+        # calculate_methylation_frequency.py output as input
+        return "nanopolish_calc_meth_freq"
     if "position" in header:
-        return "overviewtable" #own overviewtable as input: needs first column header to be "position"
+        # own overviewtable as input: needs first column header to be "position" (nog niet de ideale oplossing)
+        return "overviewtable"
     sys.exit(f"\n\n\nInput file {filename} not recognized!\n")
 
 
@@ -482,5 +431,33 @@ def is_bam_file(filepath):
     except OSError:
         return False
 
-overviewtable, heatmap = (
-    args.files, args.names, args.window, args.expand, args.gtf, simplify=False)
+
+def create_subplots(num_col):
+    """
+    Prepare the panels for the subplots in case of annotation track.
+    """
+    if num_col > 1:
+        fig = plotly.subplots.make_subplots(rows=1, cols=num_col, column_widths=[0.1, 0.9], horizontal_spacing=0.001, shared_yaxes=True)
+    else:
+        fig = plotly.subplots.make_subplots(rows=1, cols=1)
+    fig.update_layout({'plot_bgcolor': 'rgba(0,0,0,0)',
+                       'paper_bgcolor': 'rgba(0,0,0,0)', }, title="methylation frequency")
+    return fig
+
+
+def plot_methylation(subplots, meth_data, num_col):
+    samplelist = list(meth_data)
+    positionlist = list(reversed(meth_data.index.values.tolist()))
+    overview = meth_data.to_numpy()
+    overviewarray = np.flip(overview, 0)
+
+    fig = subplots.add_trace(go.Heatmap(
+        z=overviewarray, x=samplelist, y=positionlist), row=1, col=num_col)
+    fig.update_xaxes(tickangle=45, tickfont=dict(size=10), row=1, col=num_col)
+    fig.update_yaxes(tickfont=dict(size=10), row=1, col=num_col)
+    return fig
+
+
+meth_data, fig = meth_browser(
+    args.files, args.names, args.window, args.expand, args.gff, simplify=True)
+
