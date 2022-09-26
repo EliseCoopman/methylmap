@@ -127,7 +127,7 @@ def read_mods(files, names, region):
     input can also be raw data per read, optionally phased
     which will return a dataframe with 'read', 'chromosome', 'pos', 'log_lik_ratio', 'strand'
     """
-    # checkt alleen eerste file in de list met alle files, niet ideaal, hoogstwss ook probleem wanneer enkel overviewtable als input o
+    # checkt alleen eerste file in de list met alle files, niet ideaal, hoogstwss ook probleem wanneer enkel overviewtable als input
     file_type = file_sniffer(files[0]) # checkt alleen eerste file in de list met alle files
     logging.info(f"File {files[0]} is of type {file_type}")
     try:
