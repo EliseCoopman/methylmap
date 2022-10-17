@@ -1,5 +1,7 @@
 import plotly
 import plotly.graph_objects as go
+
+### WDC you are not using the import below
 from plotly.subplots import make_subplots
 from plotly.colors import DEFAULT_PLOTLY_COLORS as plcolors
 import itertools
@@ -33,9 +35,7 @@ class Region(object):
         if expand:
             self.begin = self.begin - int(expand)
             self.end = self.end + int(expand)
-        self.start = (
-            self.begin
-        )  # start is now just an alias for begin because I tend to forget
+        self.start = self.begin  # start is now just an alias for begin because I tend to forget
         self.size = self.end - self.begin
         if self.size < 0:
             sys.exit(
@@ -126,12 +126,8 @@ def meth_browser(
 ):
     if window:
         window = Region(window, expand)
-    heatmapfig = 1
-    if gff:
-        annotationfig = 1
-    else:
-        annotationfig = 0
-    num_col = heatmapfig + annotationfig  # number of subplots (columns) needed
+
+    num_col = 2 if gff else 1  # number of subplots (columns) needed
     subplots = create_subplots(num_col)
 
     # frequencies table with all meth frequencies of all samples
@@ -144,14 +140,11 @@ def meth_browser(
         annotation_traces = gff_annotation(gff, window, simplify)
         for annot_trace in annotation_traces:
             fig.append_trace(trace=annot_trace, row=1, col=1)
-        fig.update_xaxes(
-            title_text="", showticklabels=False, zeroline=False, row=1, col=1
-        )
-        fig.update_yaxes(
-            title_text="", showticklabels=True, zeroline=False, row=1, col=1
-        )
+        fig.update_xaxes(title_text="", showticklabels=False, zeroline=False, row=1, col=1)
+        fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=1, col=1)
     with open(outfig, "w") as f:
         f.write(fig.to_html())
+    ### WDC you are returning, but not doing anything with meth_data or fig, also not necessary I think
     return meth_data, fig
 
 
@@ -182,6 +175,8 @@ def read_mods(files, table, names, window, groups, gff, outtable):
 
 
 def parse_overviewtable_nanopolishfiles(table):
+    ### WDC it is possible that the user has not specified the right column names in this file
+    ### WDC currently not supported, but I think the overview table could also contain cram/bam paths?
     overviewtable = pd.read_table(table).sort_values(["group", "name"])
     files = overviewtable["path"].tolist()
     names = overviewtable["name"].tolist()
@@ -201,9 +196,7 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
             if not Path(file + ".tbi").is_file():
                 try:
                     with open(file) as f:
-                        subprocess.Popen(
-                            ["tabix", "-S1", "-s1", "-b2", "-e3", file], stdout=f
-                        )
+                        subprocess.Popen(["tabix", "-S1", "-s1", "-b2", "-e3", file], stdout=f)
                 except FileNotFoundError as e:
                     logging.error("Error when making a .tbi file.")
                     logging.error(e, exc_info=True)
@@ -224,14 +217,12 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                 sys.stderr.write("Is tabix installed and on the PATH?")
                 raise
             header = gzip.open(file, "rt").readline().rstrip().split("\t")
-            table = pd.read_csv(
-                tabix_stream.stdout, sep="\t", header=None, names=header
-            )
+            table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
             logging.info("Read the file in a dataframe.")
         else:
             table = pd.read_csv(file, sep="\t")  # telkens hele file inlezen
             logging.info("Read the file in a dataframe.")
-
+        ### WDC I don't think you are using pyranges here? First thing you do after creating the object is going back to the underlying dataframe
         df = pr.PyRanges(
             table.drop(
                 [
@@ -241,18 +232,14 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                     "called_sites",
                 ],
                 axis=1,
-            ).rename(
-                columns={"start": "Start", "chromosome": "Chromosome", "end": "End"}
-            )
+            ).rename(columns={"start": "Start", "chromosome": "Chromosome", "end": "End"})
         )
         table = df.df
         table["position"] = (table["Start"] + table["End"]) / 2
         table = table.set_index("position").drop(["Chromosome", "Start", "End"], axis=1)
         dfs.append(table.rename(columns={"methylated_frequency": name}))
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
-    methfreqtable = methfrequencytable.reindex(
-        index=methfrequencytable.index[::-1]
-    )  # reversed? ;)
+    methfreqtable = methfrequencytable.reindex(index=methfrequencytable.index[::-1])  # reversed? ;)
     # output is an meth frequency table with position as index and for each sample a column with all the methylation frequencies
 
     if files:
@@ -260,11 +247,11 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
             try:
                 headerlist = list(methfreqtable.columns.values)
                 res = zip(headerlist, groups)
+                ### WDC sorting by -1 for last element in zipped pair?
                 output = sorted(list(res), key=lambda x: x[-1])
-                orderedlist = []
-                for i in output:
-                    orderedlist.append(i[0])
+                orderedlist = [i[0] for i in output]
                 methfreqtable = methfreqtable.reindex(columns=orderedlist)
+            ### WDC I don't think you could get a FileNotFoundError here?
             except FileNotFoundError as e:
                 logging.error("Error when matching --groups with samples.")
                 logging.error(e, exc_info=True)
@@ -279,13 +266,17 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
 
 
 def parse_methfrequencytable(table, names, window, groups, gff, outtable):
+    ### WDC you expect the table to have a postion field that is "chr15:34419000"? Why not a separate position column?
     table = pd.read_table(table)
     if str(table["position"].iloc[0]).startswith(
         "chr"
     ):  # probleem wanneer sommige rows wel "chr" hebben en andere niet, checkt enkel de eerste
+        ### WDC files like that are a crime
         table[["chrom", "position"]] = table["position"].str.split(":", 1, expand=True)
 
     table = table.astype({"position": float})
+    ### WDC do you need to check before sorting? Can't you just sort it even if it already was?
+    ### WDC I'm not sure I understand what is going on here
     numberofpositions = len(table) - 1
     value1 = table.iloc[0, 0]
     value2 = table.iloc[numberofpositions, 0]
@@ -296,23 +287,18 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
 
     if (
         window
-    ):
+    ):  ### WDC look at between https://pandas.pydata.org/docs/reference/api/pandas.Series.between.html
         methfreqtable = methfreqtable[
-            (methfreqtable["position"] >= window.begin)
-            & (methfreqtable["position"] <= window.end)
+            (methfreqtable["position"] >= window.begin) & (methfreqtable["position"] <= window.end)
         ]
     else:
-        if (
-            gff
-        ): 
+        if gff:
+            ### WDC would suggest to make a chrom column required
             if "chrom" in methfreqtable.columns:
-                begin = float(methfreqtable.iloc[numberofpositions, 0])
-                end = float(methfreqtable.iloc[0, 0])
+                ### WDC I would check if methfreqtable["chrom"].unique() has length of 1
                 if (methfreqtable["chrom"] == methfreqtable["chrom"][0]).all():
-                    chrom = methfreqtable.iloc[
-                        0, methfreqtable.columns.get_loc("chrom")
-                    ]
-                    if not chrom.startswith("chr"):
+                    chrom = methfreqtable.iloc[0, methfreqtable.columns.get_loc("chrom")]
+                    if not chrom.startswith("chr"):  ### WDC not all chromosomes have 'chr'
                         logging.error(
                             "Error when extracting window out of methfreqtable positions."
                         )
@@ -323,15 +309,14 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
                             "Is position column of methfreqtable in format chr1:123456?"
                         )
                 else:
-                    logging.error(
-                        "Error when extracting window out of methfreqtable positions."
-                    )
+                    ### WDC probably have to stop the script if this happens
+                    logging.error("Error when extracting window out of methfreqtable positions.")
                     sys.stderr.write(
                         "\n\nError when extracting window out of methfreqtable positions.\n"
                     )
-                    sys.stderr.write(
-                        "Window over different chromosomes is not possible."
-                    )
+                    sys.stderr.write("Window over different chromosomes is not possible.")
+                begin = float(methfreqtable.iloc[numberofpositions, 0])
+                end = float(methfreqtable.iloc[0, 0])
                 window = Region(f"{chrom}:{round(begin)}-{round(end)}")
             else:
                 logging.error(
@@ -356,10 +341,9 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
             headerlist = list(methfreqtable.columns.values)
             res = zip(headerlist, groups)
             output = sorted(list(res), key=lambda x: x[-1])
-            orderedlist = []
-            for i in output:
-                orderedlist.append(i[0])
+            orderedlist = [i[0] for i in output]
             methfreqtable = methfreqtable.reindex(columns=orderedlist)
+        ### WDC I don't think you could get a FileNotFoundError here?
         except FileNotFoundError as e:
             logging.error("Error when matching --groups with samples.")
             logging.error(e, exc_info=True)
@@ -419,9 +403,7 @@ def annot_file_type(annot_file):
     """
     if annot_file.endswith((".gtf", ".gtf.gz")):
         return "gtf"
-    elif annot_file.endswith(
-        (".gff", ".gff.gz", ".gff2", ".gff2.gz", ".gff3", ".gff3.gz")
-    ):
+    elif annot_file.endswith((".gff", ".gff.gz", ".gff2", ".gff2.gz", ".gff3", ".gff3.gz")):
         return "gff"
     else:
         sys.exit(
@@ -436,8 +418,7 @@ def transcripts_in_window(df, window, feature="transcript"):
     either the end or the begin of an exon is within the window
     """
     return df.loc[
-        df["begin"].between(window.begin, window.end)
-        | df["end"].between(window.begin, window.end),
+        df["begin"].between(window.begin, window.end) | df["end"].between(window.begin, window.end),
         feature,
     ].unique()
 
@@ -455,7 +436,7 @@ def parse_annotation(gff, window):
     """
     type = annot_file_type(gff)
     logging.info(f"Parsing {type} file...")
-    if Path(gff + ".tbi").is_file(): 
+    if Path(gff + ".tbi").is_file():
         logging.info(f"Reading {gff} using a tabix stream.")
         try:
             tabix_stream = subprocess.Popen(
@@ -472,6 +453,8 @@ def parse_annotation(gff, window):
     else:
         try:
             with open(gff) as f:
+                ### WDC Does this attempt to overwrite the gff?
+                ### WDC is there even a stdout with this command?
                 subprocess.Popen(
                     ["tabix", "-s1", "-b4", "-e5", gff], stdout=f
                 )  # possible problem: -S, -s, -b, -e zijn anders in andere gff files
@@ -499,7 +482,7 @@ def parse_annotation(gff, window):
             "attributes",
         ],
     )
-    return annotationfile 
+    return annotationfile
 
 
 def annotation_transcripts(gff, window, simplify):
@@ -527,9 +510,7 @@ def annotation_transcripts(gff, window, simplify):
     )
 
     if simplify:
-        annotationfile.drop_duplicates(
-            subset=["chromosome", "begin", "end", "gene"], inplace=True
-        )
+        annotationfile.drop_duplicates(subset=["chromosome", "begin", "end", "gene"], inplace=True)
         res = []
         for g in transcripts_in_window(annotationfile, window, feature="gene"):
             gtable = annotationfile.loc[annotationfile["gene"] == g]
@@ -622,21 +603,13 @@ def file_sniffer(filename):
         return "nanopolish_calc_meth_freq"
     if "path" in header:  # overviewtable
         df = pd.read_table(filename)
-        if (
-            df["path"].iloc[0].endswith(".tsv")
-        ):  ###only checks first file in overviewtable
+        if df["path"].iloc[0].endswith(".tsv"):  ###only checks first file in overviewtable
             return "overviewtable_nanopolishfiles"
-        elif (
-            df["path"].iloc[0].endswith(".tsv.gz")
-        ):  ###only checks first file in overviewtable
+        elif df["path"].iloc[0].endswith(".tsv.gz"):  ###only checks first file in overviewtable
             return "overviewtable_nanopolishfiles"
-        elif (
-            df["path"].iloc[0].endswith(".bam")
-        ):  ####only checks first file in overviewtable
+        elif df["path"].iloc[0].endswith(".bam"):  ####only checks first file in overviewtable
             return "bam"
-        elif (
-            df["path"].iloc[0].endswith(".cram")
-        ):  ####only checks first file in overviewtable
+        elif df["path"].iloc[0].endswith(".cram"):  ####only checks first file in overviewtable
             return "cram"
     if header.startswith("position"):
         ####own methfrequencytable as input: needs first column header to be "position" (nog niet de ideale oplossing)
