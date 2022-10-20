@@ -18,12 +18,12 @@ rule all:
 
 rule heatmap:
     input:
-        inp = os.path.join("/home/ecoopman/methfreqtable_chr_limited.tsv.gz"),
-        #inp = expand(os.path.join(outdir, "calculatemethylationfrequency/testfiles/{id}_phase{phase}.tsv.gz"), id=sample_info.index, phase = [1,2]),
-        #tbi = expand(os.path.join(outdir, "calculatemethylationfrequency/testfiles/{id}_phase{phase}.tsv.gz.tbi"), id=sample_info.index, phase = [1,2]),
-        gff = os.path.join("/home/ecoopman/ONT-meth-Elise/gff3/gencode_v40_annotation_sorted.gff3.gz"),
+        #inp = os.path.join("/home/ecoopman/methfreqtable_chr_limited.tsv.gz"),
+        inp = expand(os.path.join(outdir, "calculatemethylationfrequency/testfiles/{id}_phase{phase}.tsv.gz"), id=sample_info.index, phase = [1,2]),
+        tbi = expand(os.path.join(outdir, "calculatemethylationfrequency/testfiles/{id}_phase{phase}.tsv.gz.tbi"), id=sample_info.index, phase = [1,2]),
+        #gff = os.path.join("/home/ecoopman/ONT-meth-Elise/gff3/gencode_v40_annotation_sorted.gff3.gz"),
     params:
-        names = ["name1", "name2", "name3", "name4"],
+        names = ["name1", "name2", "name3", "name4","name5"],
         groups = ["case", "control", "control", "case"]
     output:
        outtable = os.path.join(outdir, "heatmap/heatmap.tsv"),
@@ -34,4 +34,4 @@ rule heatmap:
     log:
         os.path.join(outdir, "logs/heatmap.log")
     shell:
-         "python heatmap_test.py --table {input.inp} --window chr17:44345246-44353106 --gff {input.gff} --expand 10000 --groups {params.groups} --outfig {output.outfig} --outtable {output.outtable} 2> {log}"
+         "python heatmap.py --files {input.inp} --window chr17:44345246-44353106 --expand 10000  --names {params.names} --groups {params.groups} --outfig {output.outfig} --outtable {output.outtable} 2> {log}"
