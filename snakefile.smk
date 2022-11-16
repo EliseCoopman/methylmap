@@ -1,4 +1,4 @@
-import os #This module provides a portable way of using operating system dependent functionality
+import os
 import pandas as pd
 from pathlib import Path
 
@@ -10,7 +10,6 @@ sample_info["FILE PRESENT"] = sample_info.BAM.apply(os.path.isfile)
 sample_info = sample_info.loc[sample_info["FILE PRESENT"] == True]
 
 sample_info_baminput = pd.read_table("/home/ecoopman/heatmap/baminput/bamfiles/bamfiles.txt").set_index("SAMPLE")
-#sample_info_baminput = sample_info_baminput.rename(columns=sample_info_baminput.iloc[0])
 sample_info_baminput.BAM = "/home/ecoopman/heatmap/baminput/bamfiles/" + sample_info_baminput.BAM
 sample_info_baminput["FILE PRESENT"] = sample_info_baminput.BAM.apply(os.path.isfile)
 sample_info_baminput = sample_info_baminput.loc[sample_info_baminput["FILE PRESENT"] == True]
