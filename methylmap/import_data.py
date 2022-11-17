@@ -100,6 +100,7 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                     sys.stderr.write("\n\nERROR when making a .tbi file.\n")
                     sys.stderr.write("Is tabix installed and on the PATH?.")
                     sys.stderr.write(f"\n\n\nDetailed error:\n\n{make_tabix.stderr.read()}\n")
+                    raise
                 if make_tabix.returncode:
                     sys.exit(f"\n\n\nReceived tabix error\n\n{make_tabix.stderr.read()}")
 
@@ -266,6 +267,7 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
                 "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
             )
             sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
+            raise
         if modbam_stream.returncode:
             sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
         headerlist = [
