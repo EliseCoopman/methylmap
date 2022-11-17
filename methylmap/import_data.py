@@ -158,7 +158,7 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                 methfreqtable = methfreqtable.reindex(columns=orderedlist)
             else:
                 sys.exit(
-                    f"ERRORwhen matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                    f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                 )
 
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
@@ -184,11 +184,11 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
                 sys.exit(
                     "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
                 )
-                chrom = df.iloc[0, df.columns.get_loc("chrom")]
-                if chrom.startswith("chr"):  # if in format "chr1"
-                    chrom = chrom
-                else:  # if in format "1"
-                    chrom = "chr" + chrom
+            chrom = df.iloc[0, df.columns.get_loc("chrom")]
+            if chrom.startswith("chr"):  # if in format "chr1"
+                chrom = chrom
+            else:  # if in format "1"
+                chrom = "chr" + chrom
             numberofpositions = len(df) - 1
             begin = float(df["position"].iat[0])
             end = float(df["position"].iat[numberofpositions])
@@ -218,10 +218,10 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
             orderedlist = [i[0] for i in output]
             df = df.reindex(columns=orderedlist)
         else:
-            logging.warning(
+            logging.error(
                 f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
             )
-            sys.stderr.write(
+            sys.exit(
                 f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
             )
 
