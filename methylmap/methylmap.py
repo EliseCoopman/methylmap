@@ -58,6 +58,7 @@ def get_args():
         "--mod",
         help="Modified base of interest when bam files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao",
         default="5mC",
+        choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
     )
     args = parser.parse_args()
     if args.files:
