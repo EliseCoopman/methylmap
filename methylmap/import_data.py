@@ -281,6 +281,7 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
             "read_coverage",
             "methylated_frequency",
         ]
+        ### WDC should you really read all columns if the first thing you do is drop a lot of them? there is a usecols option, which could work
         table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None, names=headerlist)
         logging.info("Read the file in a dataframe.")
         table.drop(
