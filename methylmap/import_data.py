@@ -180,16 +180,15 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
             logging.info(
                 "If no window given and annotation requested, take window out of methfreqtable."
             )
-            if len(df["chrom"].unique()) == 1:
+            if len(df["chrom"].unique()) > 1:
+                sys.exit(
+                    "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
+                )
                 chrom = df.iloc[0, df.columns.get_loc("chrom")]
                 if chrom.startswith("chr"):  # if in format "chr1"
                     chrom = chrom
                 else:  # if in format "1"
                     chrom = "chr" + chrom
-            else:
-                sys.exit(
-                    "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromsome \n"
-                )
             numberofpositions = len(df) - 1
             begin = float(df["position"].iat[0])
             end = float(df["position"].iat[numberofpositions])
