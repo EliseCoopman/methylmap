@@ -266,8 +266,8 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
                 "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
             )
             sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
-            sys.stderr.write(f"\n\n\nReturncode is {modbam_stream.returncode}")
-            raise
+        if modbam_stream.returncode:
+            sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
         headerlist = [
             "chromosome",
             "start",
