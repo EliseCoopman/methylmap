@@ -305,10 +305,10 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
     if len(methfrequencytable) == 0:
-        logging.warning(
+        logging.error(
             f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
-        sys.stderr.write(
+        sys.exit(
             f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
