@@ -325,7 +325,7 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
                 methfreqtable = methfreqtable.reindex(columns=orderedlist)
             else:
                 sys.exit(
-                    f"ERRORwhen matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                    f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                 )
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return methfreqtable, window
