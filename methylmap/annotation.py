@@ -68,14 +68,16 @@ def parse_annotation(gff, window):
             )
             # possible problem: -S, -s, -b, -e zijn anders in andere gff files
             # WDC "tabix ,"-p", gff" -> dit werkt niet, ook niet als ik het gewoon in de terminal uitvoer, error is:The preset string not recognised
+            # WDC I wonder if this preset error is solved with shlex?
         except FileNotFoundError as e:
             logging.error("Error when making a .tbi file.")
             logging.error(e, exc_info=True)
             sys.stderr.write("\n\nERROR when making a .tbi file.\n")
             sys.stderr.write("Is tabix installed and on the PATH?.")
             sys.stderr.write(f"\n\n\nDetailed error: {tabix_gff.stderr.read()}\n")
-            sys.stderr.write(f"\n\n\nReturncode is {tabix_gff.returncode}")
             raise
+        if tabix_gff.returncode:
+            sys.exit(f"\n\n\nReceived tabix error:\n{tabix_gff.stderr.read()}\n")
     try:
         logging.info(f"Reading {gff} using a tabix stream.")
         tabix_stream = subprocess.Popen(
@@ -88,8 +90,9 @@ def parse_annotation(gff, window):
         logging.error(e, exc_info=True)
         sys.stderr.write("\n\nERROR when opening a tabix stream.\n")
         sys.stderr.write(f"\n\n\nDetailed error: {tabix_stream.stderr.read()}\n")
-        sys.stderr.write(f"\n\n\nReturncode is {tabix_stream.returncode}")
         raise
+    if tabix_stream.returncode:
+        sys.exit(f"\n\n\nReceived tabix error:\n{tabix_stream.stderr.read()}\n")
     annotationfile = pd.read_csv(
         tabix_stream.stdout,
         sep="\t",
