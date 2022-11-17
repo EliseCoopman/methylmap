@@ -137,10 +137,10 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
     if len(methfrequencytable) == 0:
-        logging.warning(
+        logging.error(
             f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
-        sys.stderr.write(
+        sys.exit(
             f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
@@ -199,10 +199,10 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
     df.set_index("position", inplace=True)
 
     if len(df) == 0:
-        logging.warning(
+        logging.error(
             f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
-        sys.stderr.write(
+        sys.exit(
             f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
 
