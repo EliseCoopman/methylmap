@@ -99,17 +99,14 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                     logging.error(e, exc_info=True)
                     sys.stderr.write("\n\nERROR when making a .tbi file.\n")
                     sys.stderr.write("Is tabix installed and on the PATH?.")
-                    sys.stderr.write(
-                        f"\n\n\nDetailed error: {make_tabix.stderr.read()}\n"
-                    )  # @WDC: is this the way to go :)?
-                    sys.stderr.write(
-                        f"\n\n\nReturncode is {make_tabix.returncode}"
-                    )  # @WDC: is this the way to go :)?
-                    raise
+                    sys.stderr.write(f"\n\n\nDetailed error:\n\n{make_tabix.stderr.read()}\n")
+                if make_tabix.returncode:
+                    sys.exit(f"\n\n\nReceived tabix error\n\n{make_tabix.stderr.read()}")
+
             try:
                 logging.info(f"Reading {file} using a tabix stream.")
                 tabix_stream = subprocess.Popen(
-                    shlex.split(f"tabix  {file} {window.fmt}"),
+                    shlex.split(f"tabix {file} {window.fmt}"),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
@@ -119,8 +116,10 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
                 sys.stderr.write("\n\nERROR when opening a tabix stream.\n")
                 sys.stderr.write("Is tabix installed and on the PATH?")
                 sys.stderr.write(f"\n\n\nDetailed error: {tabix_stream.stderr.read()}\n")
-                sys.stderr.write(f"\n\n\nReturncode is {tabix_stream.returncode}")
                 raise
+            if tabix_stream.returncode:
+                sys.exit(f"\n\n\nReceived tabix error\n\n{tabix_stream.stderr.read()}")
+
             header = gzip.open(file, "rt").readline().rstrip().split("\t")
             table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
             logging.info("Read the file in a dataframe.")
