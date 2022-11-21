@@ -23,7 +23,7 @@ def create_subplots(num_col):
             "plot_bgcolor": "rgba(0,0,0,0)",
             "paper_bgcolor": "rgba(0,0,0,0)",
         },
-        title="methylation frequency",
+        title="Nucleotide modification frequencies",
     )
     return fig
 
@@ -38,5 +38,5 @@ def plot_methylation(subplots, meth_data, num_col):
         go.Heatmap(z=overviewarray, x=samplelist, y=positionlist), row=1, col=num_col
     )
     fig.update_xaxes(tickangle=45, tickfont=dict(size=10), row=1, col=num_col)
-    fig.update_yaxes(tickfont=dict(size=10), row=1, col=num_col, autorange="reversed")
+    fig.update_yaxes(tickfont=dict(size=5), row=1, col=num_col, autorange="reversed")
     return fig
