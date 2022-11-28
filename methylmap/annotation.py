@@ -63,12 +63,7 @@ def parse_annotation(gff, window):
     if not Path(gff + ".tbi").is_file():
         try:
             logging.info("Make .tbi file from annotion file for fast selection window of interest.")
-            tabix_gff = subprocess.Popen(
-                shlex.split(f"tabix -s1 -b4 -e5 {gff}"), stderr=subprocess.PIPE
-            )
-            # possible problem: -S, -s, -b, -e zijn anders in andere gff files
-            # WDC "tabix ,"-p", gff" -> dit werkt niet, ook niet als ik het gewoon in de terminal uitvoer, error is:The preset string not recognised
-            # WDC I wonder if this preset error is solved with shlex?
+            tabix_gff = subprocess.Popen(shlex.split(f"tabix -p gff {gff}"), stderr=subprocess.PIPE)
         except FileNotFoundError as e:
             logging.error("Error when making a .tbi file.")
             logging.error(e, exc_info=True)
@@ -81,9 +76,7 @@ def parse_annotation(gff, window):
     try:
         logging.info(f"Reading {gff} using a tabix stream.")
         tabix_stream = subprocess.Popen(
-            ["tabix", gff, window.fmt],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            shlex.split(f"tabix {gff} {window.fmt}"), stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
     except FileNotFoundError as e:
         logging.error("Error when opening a tabix stream.")

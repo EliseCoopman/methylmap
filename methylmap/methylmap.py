@@ -22,7 +22,7 @@ def main():
         groups=args.groups,
         simplify=args.simplify,
         fasta=args.fasta,
-        mod=args.mod,
+        mod=args.mod
     )
 
 
@@ -86,7 +86,7 @@ def meth_browser(
     groups=False,
     simplify=False,
     fasta=False,
-    mod=False,
+    mod=False
 ):
     if window:
         window = Region(window, expand)
