@@ -2,3 +2,5 @@
 
 methylmap.egg-info/
 methylmap/__pycache__/
+
+snakefile.smk
