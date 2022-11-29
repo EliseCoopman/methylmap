@@ -36,7 +36,7 @@ def get_args():
         nargs="+",
         help="Nanopolish calculate_methylation_frequency.py output or BAM/CRAM files.",
     )
-    action.add_argument("-t", "--table", help="Methfrequencytable or overviewtable input.")
+    action.add_argument("-t", "--table", help="Methfreqtable or overviewtable input.")
     parser.add_argument(
         "-w",
         "--window",
