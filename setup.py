@@ -11,7 +11,7 @@ exec(open("methylmap/version.py").read())
 setup(
     name="methylmap",
     version=__version__,  # noqa: F821
-    description="Plotting tool for population scale long read sequencing methylation",
+    description="Plotting tool for population scale nucleotide modifications.",
     long_description=open(path.join(here, "README.md"), encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/EliseCoopman/methylmap",
