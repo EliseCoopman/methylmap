@@ -16,7 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/EliseCoopman/methylmap",
     author="Elise Coopman",
-    author_email="elise.coopmap@uantwerpen.vib.be",
+    author_email="elisecoopman@yahoo.com",
     license="MIT",
     classifiers=[
         "Development Status :: 4 - Beta",
