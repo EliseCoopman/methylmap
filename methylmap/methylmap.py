@@ -28,36 +28,36 @@ def main():
 
 
 def get_args():
-    parser = ArgumentParser(description="Create heatmap of methylation frequencies.")
+    parser = ArgumentParser(description="Plotting tool for population scale nucleotide modifications.")
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument(
         "-f",
         "--files",
         nargs="+",
-        help="Nanopolish calculate_methylation_frequency.py output or BAM/CRAM files",
+        help="Nanopolish calculate_methylation_frequency.py output or BAM/CRAM files.",
     )
-    action.add_argument("-t", "--table", help="methfrequencytable or overviewtable")
+    action.add_argument("-t", "--table", help="Methfrequencytable or overviewtable input.")
     parser.add_argument(
         "-w",
         "--window",
-        help="Region to visualise. Format: chr:start-end (Example: chr20:58839718-58911192",
+        help="Region to visualise. Format: chr:start-end (Example: chr20:58839718-58911192)",
     )
-    parser.add_argument("-n", "--names", nargs="*", default=[])
-    parser.add_argument("--gff", "--gtf", help="gtf/gff3 file")
+    parser.add_argument("-n", "--names", nargs="*", default=[],help="List with sample names.")
+    parser.add_argument("--gff", "--gtf", help="Add annotation track based on GTF/GFF file.")
     parser.add_argument(
         "--expand",
-        help="number of base pairs to expand the window with in both directions",
+        help="Number of base pairs to expand the window with in both directions.",
         type=int,
         default=0,
     )
     parser.add_argument("--outtable", help="File to write the frequencies table to.")
     parser.add_argument("--outfig", help="File to write output heatmap (in HTML format) to.")
-    parser.add_argument("--groups", nargs="*", help="List of category per sample")
-    parser.add_argument("-s", "--simplify", action="store_true")  # default: False
-    parser.add_argument("--fasta", help="Fasta reference file")
+    parser.add_argument("--groups", nargs="*", help="List of experimental group for each sample.")
+    parser.add_argument("-s", "--simplify", action="store_true", help="Simplify annotation track to show genes rather than transcripts.")  # default: False
+    parser.add_argument("--fasta", help="Fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files.")
     parser.add_argument(
         "--mod",
-        help="Modified base of interest when bam files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao",
+        help="Modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao. Default = 5mC",
         default="5mC",
         choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
     )
