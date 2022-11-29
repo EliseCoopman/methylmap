@@ -4,3 +4,5 @@ methylmap.egg-info/
 methylmap/__pycache__/
 
 snakefile.smk
+README.rst
+dist/
