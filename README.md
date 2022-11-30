@@ -1,4 +1,4 @@
-### METHYLMAP
+## METHYLMAP
 
 Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes. Supported input possibilities are:
 
@@ -25,37 +25,30 @@ Methylmap is a tool for visualization of modified nucleotide frequencies for lar
 3     /home/path_to_file/bamfile_sample_4.bam   samplename_4    case
 ````
 
-## INSTALLATION
+### INSTALLATION
 pip install methylmap
 
-## USAGE
+### USAGE
 
 ```
-usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND] [--outtable OUTTABLE] [--outfig OUTFIG] [--groups [GROUPS ...]] [-s] [--fasta FASTA]
-                 [--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [-v]
+usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND] [--outtable OUTTABLE] [--outfig OUTFIG] [--groups [GROUPS ...]] [-s] [--fasta FASTA] [--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [-v]
 
 Plotting tool for population scale nucleotide modifications.
 
 options:
   -h, --help            show this help message and exit
-  -f FILES [FILES ...], --files FILES [FILES ...]
-                        Nanopolish calculate_methylation_frequency.py output or BAM/CRAM files.
-  -t TABLE, --table TABLE
-                        Methfreqtable or overviewtable input.
-  -w WINDOW, --window WINDOW
-                        Region to visualise. Format: chr:start-end (Example: chr20:58839718-58911192)
-  -n [NAMES ...], --names [NAMES ...]
-                        List with sample names.
-  --gff GFF, --gtf GFF  Add annotation track based on GTF/GFF file.
-  --expand EXPAND       Number of base pairs to expand the window with in both directions.
-  --outtable OUTTABLE   File to write the frequencies table to.
-  --outfig OUTFIG       File to write output heatmap (in HTML format) to.
-  --groups [GROUPS ...]
-                        List of experimental group for each sample.
-  -s, --simplify        Simplify annotation track to show genes rather than transcripts.
-  --fasta FASTA         Fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files.
-  --mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}
-                        Modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao. Default = 5mC
-  -v, --version         Print version and exit.
+  -f, --files           list with nanopolish (processed with calculate_methylation_frequency.py) files or BAM/CRAM files
+  -t, --table           methfreqtable or overviewtable input
+  -w, --window          region to visualise, format: chr:start-end (example: chr20:58839718-58911192)
+  -n, --names           list with sample names
+  --gff, --gtf          add annotation track based on GTF/GFF file
+  --expand              number of base pairs to expand the window with in both directions
+  --outtable            file to write the frequencies table to
+  --outfig              file to write output heatmap (in HTML format) to
+  --groups              list of experimental group for each sample
+  -s, --simplify        simplify annotation track to show genes rather than transcripts
+  --fasta               fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files
+  --mod                 modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC
+  -v, --version         print version and exit
   ```
 
