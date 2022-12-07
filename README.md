@@ -1,6 +1,14 @@
 ## METHYLMAP
 
-Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes. Supported input possibilities are:
+Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes. 
+
+### EXAMPLE
+
+![GNAS methylmap](example/20221206141259.png)  
+
+### INPUT POSSIBILITIES
+
+Supported input possibilities are:
 
 - BAM/CRAM files with MM and ML tags. Use --files input option.
 
@@ -26,14 +34,15 @@ Methylmap is a tool for visualization of modified nucleotide frequencies for lar
 ````
 
 ### INSTALLATION
+
 pip install methylmap
 
 ### USAGE
 
 ```
-usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND] 
-[--outtable OUTTABLE] [--outfig OUTFIG] [--groups [GROUPS ...]] [-s] [--fasta FASTA] 
-[--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [-v]
+usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND]
+[--outtable OUTTABLE] [--outfig OUTFIG] [--outdendro OUTDENDRO] [--groups [GROUPS ...]] [-s]
+[--fasta FASTA] [--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [-v] [--dendro]
 
 Plotting tool for population scale nucleotide modifications.
 
@@ -47,10 +56,15 @@ options:
   --expand              number of base pairs to expand the window with in both directions
   --outtable            file to write the frequencies table to
   --outfig              file to write output heatmap (in HTML format) to
+  --outdendro           file to write output dendrogram (in HTML format) to 
   --groups              list of experimental group for each sample
   -s, --simplify        simplify annotation track to show genes rather than transcripts
   --fasta               fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files
   --mod                 modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC
+  --dendro              make dendrogram output plot to show hierarchical clutstering of the input samples/haplotypes
   -v, --version         print version and exit
   ```
 
+### MORE INFORMATION
+
+More information: https://www.biorxiv.org/content/10.1101/2022.11.28.518239v1
