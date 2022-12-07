@@ -4,7 +4,7 @@ Methylmap is a tool for visualization of modified nucleotide frequencies for lar
 
 ### EXAMPLE
 
-![GNAS methylmap](example/20221206141259.png)  
+![GNAS methylmap](20221207125130.png)  
 
 ### INPUT POSSIBILITIES
 
