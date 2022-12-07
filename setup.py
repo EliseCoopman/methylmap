@@ -35,6 +35,7 @@ setup(
         "pandas",
         "numpy",
         "plotly>=5.4.0",
+        "scipy"
     ],
     package_data={"methylmap": []},
     package_dir={"methylmap": "methylmap"},

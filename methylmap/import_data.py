@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import methylmap.dendro as den
 
 
 class Region(object):
@@ -13,7 +14,7 @@ class Region(object):
         try:
             self.chromosome, interval = region.replace(",", "").split(":")
             try:
-                # see if just integer chromosomes are used
+                #see if just integer chromosomes are used
                 self.chromosome = int(self.chromosome)
             except ValueError:
                 pass
@@ -26,7 +27,7 @@ class Region(object):
         if expand:
             self.begin = self.begin - int(expand)
             self.end = self.end + int(expand)
-        self.start = self.begin  # start is now just an alias for begin because I tend to forget
+        self.start = self.begin #start as alias for begin
         self.size = self.end - self.begin
         if self.size < 0:
             sys.exit(
@@ -37,7 +38,7 @@ class Region(object):
         self.fmt = f"{self.chromosome}:{self.begin}-{self.end}"
 
 
-def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod):
+def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, dendro, outdendro):
     """
     Deciding of input file(s) type and processing them.
     """
@@ -47,15 +48,15 @@ def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod):
         file_type = file_sniffer(table)
     try:
         if file_type == "nanopolish_calc_meth_freq":
-            return parse_nanopolish(files, table, names, window, groups, outtable)
+            return parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro)
         elif file_type == "overviewtable_nanopolishfiles":
-            return parse_nanopolish(files, table, names, window, groups, outtable)
+            return parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro)
         elif file_type == "methfrequencytable":
-            return parse_methfrequencytable(table, names, window, groups, gff, outtable)
+            return parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro, outdendro)
         elif file_type in ["cram", "bam"]:
-            return parse_bam(files, table, names, window, groups, outtable, fasta, mod)
+            return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
-            return parse_bam(files, table, names, window, groups, outtable, fasta, mod)
+            return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -73,7 +74,7 @@ def parse_overviewtable(table):
     return files, names
 
 
-def parse_nanopolish(files, table, names, window, groups, outtable):
+def parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro):
     """
     Converts a file from nanopolish to a pandas dataframe
     input can be from calculate_methylation_frequency or overviewtable with these files
@@ -125,7 +126,7 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
             table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
             logging.info("Read the file in a dataframe.")
         else:
-            table = pd.read_csv(file, sep="\t")  # telkens hele file inlezen
+            table = pd.read_csv(file, sep="\t")
             logging.info("Read the file in a dataframe.")
         table.drop(
             ["group_sequence", "called_sites_methylated", "num_motifs_in_group", "called_sites"],
@@ -146,27 +147,38 @@ def parse_nanopolish(files, table, names, window, groups, outtable):
         )
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
-    # output is an meth frequency table with position as index and for each sample a column with all the methylation frequencies
+    # output is a meth frequency table with position as index and for each sample a column with all the methylation frequencies
 
     if files:
         if groups:
-            logging.info("Sort columns of methfrequencytable based on group")
-            headerlist = list(methfreqtable.columns.values)
-            if len(headerlist) == len(groups):
-                res = zip(headerlist, groups)
-                output = sorted(list(res), key=lambda x: x[1])
-                orderedlist = [i[0] for i in output]
-                methfreqtable = methfreqtable.reindex(columns=orderedlist)
-            else:
-                sys.exit(
-                    f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+            if dendro:
+                logging.warning(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
                 )
+                sys.stderr.write(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+                )
+            else:
+                logging.info("Sort columns of methfrequencytable based on group")
+                headerlist = list(methfreqtable.columns.values)
+                if len(headerlist) == len(groups):
+                    res = zip(headerlist, groups)
+                    output = sorted(list(res), key=lambda x: x[1])
+                    orderedlist = [i[0] for i in output]
+                    methfreqtable = methfreqtable.reindex(columns=orderedlist)
+                else:
+                    sys.exit(
+                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                    )
+
+    if dendro:
+        methfreqtable = den.make_dendro(methfreqtable, outdendro)
 
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return methfreqtable, window
 
 
-def parse_methfrequencytable(table, names, window, groups, gff, outtable):
+def parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro, outdendro):
     """
     Parsing methfrequencytable input.
     """
@@ -212,25 +224,37 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable):
 
     if groups:
         logging.info("Sort columns of methfrequencytable based on group")
-        headerlist = list(df.columns.values)
-        if len(headerlist) == len(groups):
-            res = zip(headerlist, groups)
-            output = sorted(list(res), key=lambda x: x[-1])
-            orderedlist = [i[0] for i in output]
-            df = df.reindex(columns=orderedlist)
+        if dendro:
+                logging.warning(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+                )
+                sys.stderr.write(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+                )
         else:
-            logging.error(
-                f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
-            )
-            sys.exit(
-                f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
-            )
+            headerlist = list(df.columns.values)
+            if len(headerlist) == len(groups):
+                res = zip(headerlist, groups)
+                output = sorted(list(res), key=lambda x: x[-1])
+                orderedlist = [i[0] for i in output]
+                df = df.reindex(columns=orderedlist)
+            else:
+                logging.error(
+                    f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
+                )
+                sys.exit(
+                    f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
+                )
+
+    if dendro:
+        df = den.make_dendro(df, outdendro)
+
 
     df.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return df, window
 
 
-def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
+def parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro):
     """
     Converts a bam/cram file to a pandas dataframe.
     """
@@ -256,11 +280,8 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
                 ),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-            )  # haplotype function not working -> will show you when you're here in real live :)
-        except FileNotFoundError as e:
-            logging.error(
-                "Error when making bedfile with methylation frequencies of bam/cram file with modbam2bed"
             )
+        except FileNotFoundError as e:
             logging.error(e, exc_info=True)
             sys.stderr.write("\n\nError when making bedfile of bam/cram file with modbam2bed.\n")
             sys.stderr.write(
@@ -283,24 +304,9 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
             "read_coverage",
             "methylated_frequency",
         ]
-        ### WDC should you really read all columns if the first thing you do is drop a lot of them? there is a usecols option, which could work
-        table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None, names=headerlist)
+
+        table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
         logging.info("Read the file in a dataframe.")
-        table.drop(
-            [
-                "chromosome",
-                "start",
-                "modification",
-                "score",
-                "strand",
-                "start2",
-                "end2",
-                "column1",
-                "read_coverage",
-            ],
-            axis=1,
-            inplace=True,
-        )
         table = table.set_index("position")
         dfs.append(table.rename(columns={"methylated_frequency": name}))
 
@@ -319,16 +325,29 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod):
     if files:
         logging.info("Sort columns of methfrequencytable based on group")
         if groups:
-            headerlist = list(methfreqtable.columns.values)
-            if len(headerlist) == len(groups):
-                res = zip(headerlist, groups)
-                output = sorted(list(res), key=lambda x: x[1])
-                orderedlist = [i[0] for i in output]
-                methfreqtable = methfreqtable.reindex(columns=orderedlist)
-            else:
-                sys.exit(
-                    f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+            if dendro:
+                logging.warning(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
                 )
+                sys.stderr.write(
+                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+                )
+            else:
+                headerlist = list(methfreqtable.columns.values)
+                if len(headerlist) == len(groups):
+                    res = zip(headerlist, groups)
+                    output = sorted(list(res), key=lambda x: x[1])
+                    orderedlist = [i[0] for i in output]
+                    methfreqtable = methfreqtable.reindex(columns=orderedlist)
+                else:
+                    sys.exit(
+                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                    )
+
+    if dendro:
+        methfreqtable = den.make_dendro(methfreqtable, outdendro)
+
+
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return methfreqtable, window
 
@@ -343,7 +362,7 @@ def file_sniffer(filename):
         return "bam"
     if is_cram_file(filename):  # input CRAM
         return "cram"
-    # input: calculate_methylation_frequency.py output (.tsv or .tsv.gz) OR own methfrequencytable (.tsv or .tsv.gz)
+    # input: calculate_methylation_frequency.py output (.tsv or .tsv.gz) OR own methfreqtable (.tsv or .tsv.gz)
     if is_gz_file(filename):
         import gzip
 

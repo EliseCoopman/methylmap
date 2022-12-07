@@ -16,6 +16,7 @@ def main():
         table=args.table,
         outtable=args.outtable,
         outfig=args.outfig,
+        outdendro=args.outdendro,
         names=args.names,
         window=args.window,
         expand=args.expand,
@@ -23,7 +24,8 @@ def main():
         groups=args.groups,
         simplify=args.simplify,
         fasta=args.fasta,
-        mod=args.mod
+        mod=args.mod,
+        dendro=args.dendro
     )
 
 
@@ -52,6 +54,7 @@ def get_args():
     )
     parser.add_argument("--outtable", help="File to write the frequencies table to.")
     parser.add_argument("--outfig", help="File to write output heatmap (in HTML format) to.")
+    parser.add_argument("--outdendro", help="File to write output dendrogram figure (in HTML format) to.")
     parser.add_argument("--groups", nargs="*", help="List of experimental group for each sample.")
     parser.add_argument("-s", "--simplify", action="store_true", help="Simplify annotation track to show genes rather than transcripts.")  # default: False
     parser.add_argument("--fasta", help="Fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files.")
@@ -68,6 +71,7 @@ def get_args():
         action="version",
         version=f"methylmap {__version__}",
     )
+    parser.add_argument("--dendro", action="store_true", help="make dendrogram output plot to show hierarchical clustering of the input samples/haplotypes")
     args = parser.parse_args()
     if args.files:
         if len(args.names) == 0:
@@ -87,6 +91,7 @@ def meth_browser(
     table,
     outfig="browser.html",
     outtable=False,
+    outdendro="brower.html",
     names=False,
     window=False,
     expand=False,
@@ -94,7 +99,8 @@ def meth_browser(
     groups=False,
     simplify=False,
     fasta=False,
-    mod=False
+    mod=False,
+    dendro=False
 ):
     if window:
         window = Region(window, expand)
@@ -103,7 +109,7 @@ def meth_browser(
     subplots = plots.create_subplots(num_col)
 
     # frequencies table with all meth frequencies of all samples
-    meth_data, window = read_mods(files, table, names, window, groups, gff, outtable, fasta, mod)
+    meth_data, window = read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, dendro, outdendro)
     fig = plots.plot_methylation(subplots, meth_data, num_col)
 
     if gff:
