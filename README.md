@@ -2,10 +2,6 @@
 
 Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes. 
 
-### EXAMPLE
-  
-![GNAS](example/20221207125424.png)  
-
 ### INPUT POSSIBILITIES
 
 Supported input possibilities are:
