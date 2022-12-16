@@ -29,6 +29,7 @@ def make_dendro(methfreqtable, outdendro):
     methfreqtable_transposed.reset_index(drop=True, inplace=True)
 
     den = ff.create_dendrogram(methfreqtable_transposed, labels=samples)
+    den.update_layout(title="Dendrogram")
 
     with open(outdendro, "w") as f:
         f.write(den.to_html())
