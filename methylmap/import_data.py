@@ -54,9 +54,17 @@ def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, de
         elif file_type == "methfrequencytable":
             return parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro, outdendro)
         elif file_type in ["cram", "bam"]:
-            return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
+            rc = subprocess.call(['which', 'modbam2bed'])
+            if not rc == 0:
+                sys.exit(f"\n\n\nIs modbam2bed installed?")
+            else:
+                return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
-            return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
+            rc = subprocess.call(['which', 'modbam2bed'])
+            if not rc == 0:
+                sys.exit(f"\n\n\nIs modbam2bed installed?")
+            else:
+                return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
