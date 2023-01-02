@@ -1,3 +1,4 @@
+import sys
 import logging
 import plotly.subplots
 import plotly.graph_objects as go
@@ -43,3 +44,42 @@ def plot_methylation(subplots, meth_data, num_col):
     fig.update_yaxes(tickfont=dict(size=10), row=1, col=num_col, autorange="reversed")
     
     return fig
+
+def create_output_methylmap(fig,outfig,window):
+    if outfig is None:
+        outfig = f'methylmap_{window.fmt}.html'
+    else:
+        from pathlib import Path
+        outfig = outfig.format(region=window.fmt)
+        p = Path(outfig)
+        Path.mkdir(p.parent, exist_ok=True,parents=True)
+
+    create_output(fig, outfig)
+
+def create_output_dendrogram(fig, outdendro, window):
+    if outdendro is None:
+        outdendro = f'dendrogram_{window.fmt}.html'
+    else:
+        from pathlib import Path
+        outdendro = outdendro.format(region=window.fmt)
+        p = Path(outdendro)
+        Path.mkdir(p.parent, exist_ok=True,parents=True)
+
+    create_output(fig, outdendro)
+
+def create_output(fig,outfig):
+    if outfig.endswith(".html"):
+        html_output(fig,outfig)
+    else:
+        try:
+            fig.write_image(outfig)
+        except ValueError as e:
+            sys.stderr.write("\n\nERROR: creating the image in this file format failed.\n")
+            sys.stderr.write("ERROR: creating in default html format instead.\n")
+            sys.stderr.write("ERROR: additional packages required. Detailed error:\n")
+            sys.stderr.write(str(e))
+            html_output(fig, outfig)
+    
+def html_output(fig, outfig):
+    with open(outfig, "w+") as output:
+        output.write(plotly.offline.plot(fig, output_type="div", show_link=False,include_plotlyjs="cdn"))

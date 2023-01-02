@@ -89,9 +89,9 @@ def get_args():
 def meth_browser(
     files,
     table,
-    outfig="browser.html",
+    outfig=None,
     outtable=False,
-    outdendro="brower.html",
+    outdendro=None,
     names=False,
     window=False,
     expand=False,
@@ -118,9 +118,8 @@ def meth_browser(
             fig.append_trace(trace=annot_trace, row=1, col=1)
         fig.update_xaxes(title_text="", showticklabels=False, zeroline=False, row=1, col=1)
         fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=1, col=1)
-    with open(outfig, "w") as f:
-        f.write(fig.to_html())
-
+    
+    plots.create_output_methylmap(fig,outfig, window)
 
 if __name__ == "__main__":
     main()

@@ -172,7 +172,7 @@ def parse_nanopolish(files, table, names, window, groups, outtable, dendro, outd
                     )
 
     if dendro:
-        methfreqtable = den.make_dendro(methfreqtable, outdendro)
+        methfreqtable = den.make_dendro(methfreqtable, outdendro, window)
 
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return methfreqtable, window
@@ -247,7 +247,7 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro
                 )
 
     if dendro:
-        df = den.make_dendro(df, outdendro)
+        df = den.make_dendro(df, outdendro,window)
 
 
     df.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
@@ -345,7 +345,7 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro,
                     )
 
     if dendro:
-        methfreqtable = den.make_dendro(methfreqtable, outdendro)
+        methfreqtable = den.make_dendro(methfreqtable, outdendro,window)
 
 
     methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
