@@ -56,13 +56,13 @@ def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, de
         elif file_type in ["cram", "bam"]:
             rc = subprocess.call(['which', 'modbam2bed'])
             if not rc == 0:
-                sys.exit(f"\n\n\nIs modbam2bed installed?")
+                sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
             else:
                 return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
             rc = subprocess.call(['which', 'modbam2bed'])
             if not rc == 0:
-                sys.exit(f"\n\n\nIs modbam2bed installed?")
+                sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
             else:
                 return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
     except Exception as e:
