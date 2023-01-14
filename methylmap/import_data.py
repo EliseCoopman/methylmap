@@ -6,7 +6,6 @@ import subprocess
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import methylmap.dendro as den
 
 
 class Region(object):
@@ -38,7 +37,7 @@ class Region(object):
         self.fmt = f"{self.chromosome}:{self.begin}-{self.end}"
 
 
-def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, dendro, outdendro):
+def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
     """
     Deciding of input file(s) type and processing them.
     """
@@ -48,23 +47,23 @@ def read_mods(files, table, names, window, groups, gff, outtable, fasta, mod, de
         file_type = file_sniffer(table)
     try:
         if file_type == "nanopolish_calc_meth_freq":
-            return parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro)
+            return parse_nanopolish(files, table, names, window, groups, dendro)
         elif file_type == "overviewtable_nanopolishfiles":
-            return parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro)
+            return parse_nanopolish(files, table, names, window, groups, dendro)
         elif file_type == "methfrequencytable":
-            return parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro, outdendro)
+            return parse_methfrequencytable(table, names, window, groups, gff, dendro)
         elif file_type in ["cram", "bam"]:
             rc = subprocess.call(['which', 'modbam2bed'])
             if not rc == 0:
-                sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
+                sys.exit(f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed")
             else:
-                return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
+                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
             rc = subprocess.call(['which', 'modbam2bed'])
             if not rc == 0:
                 sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
             else:
-                return parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro)
+                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -82,7 +81,7 @@ def parse_overviewtable(table):
     return files, names
 
 
-def parse_nanopolish(files, table, names, window, groups, outtable, dendro, outdendro):
+def parse_nanopolish(files, table, names, window, groups, dendro):
     """
     Converts a file from nanopolish to a pandas dataframe
     input can be from calculate_methylation_frequency or overviewtable with these files
@@ -179,14 +178,10 @@ def parse_nanopolish(files, table, names, window, groups, outtable, dendro, outd
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                     )
 
-    if dendro:
-        methfreqtable = den.make_dendro(methfreqtable, outdendro, window)
-
-    methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return methfreqtable, window
 
 
-def parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro, outdendro):
+def parse_methfrequencytable(table, names, window, groups, gff, dendro):
     """
     Parsing methfrequencytable input.
     """
@@ -254,15 +249,10 @@ def parse_methfrequencytable(table, names, window, groups, gff, outtable, dendro
                     f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
                 )
 
-    if dendro:
-        df = den.make_dendro(df, outdendro,window)
-
-
-    df.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
     return df, window
 
 
-def parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro, outdendro):
+def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
     """
     Converts a bam/cram file to a pandas dataframe.
     """
@@ -349,14 +339,8 @@ def parse_bam(files, table, names, window, groups, outtable, fasta, mod, dendro,
                     methfreqtable = methfreqtable.reindex(columns=orderedlist)
                 else:
                     sys.exit(
-                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
-                    )
-
-    if dendro:
-        methfreqtable = den.make_dendro(methfreqtable, outdendro,window)
-
-
-    methfreqtable.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
+                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?")
+                    
     return methfreqtable, window
 
 

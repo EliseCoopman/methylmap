@@ -75,9 +75,7 @@ def parse_annotation(gff, window):
             sys.exit(f"\n\n\nReceived tabix error:\n{tabix_gff.stderr.read()}\n")
     try:
         logging.info(f"Reading {gff} using a tabix stream.")
-        tabix_stream = subprocess.Popen(
-            shlex.split(f"tabix {gff} {window.fmt}"), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        tabix_stream = subprocess.Popen(["tabix", gff,  window.fmt], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except FileNotFoundError as e:
         logging.error("Error when opening a tabix stream.")
         logging.error(e, exc_info=True)

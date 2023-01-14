@@ -40,29 +40,28 @@ pip install methylmap
 ### USAGE
 
 ```
-usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND]
-[--outtable OUTTABLE] [--outfig OUTFIG] [--outdendro OUTDENDRO] [--groups [GROUPS ...]] [-s]
-[--fasta FASTA] [--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [-v] [--dendro]
+usage: methylmap [-h] (-f FILES [FILES ...] | -t TABLE) [-w WINDOW] [-n [NAMES ...]] [--gff GFF] [--expand EXPAND] 
+[--outtable OUTTABLE] [--outfig OUTFIG] [--groups [GROUPS ...]] [-s] [--fasta FASTA] 
+[--mod {5mC,5hmC,5fC,5caC,5hmU,5fU,5caU,6mA,5oxoG,Xao}] [--dendro] [-v]
 
 Plotting tool for population scale nucleotide modifications.
 
 options:
-  -h, --help            show this help message and exit
-  -f, --files           list with nanopolish (processed with calculate_methylation_frequency.py) files or BAM/CRAM files
-  -t, --table           methfreqtable or overviewtable input
-  -w, --window          region to visualise, format: chr:start-end (example: chr20:58839718-58911192)
-  -n, --names           list with sample names
-  --gff, --gtf          add annotation track based on GTF/GFF file
-  --expand              number of base pairs to expand the window with in both directions
-  --outtable            file to write the frequencies table to
-  --outfig              file to write output heatmap (in HTML format) to
-  --outdendro           file to write output dendrogram (in HTML format) to 
-  --groups              list of experimental group for each sample
-  -s, --simplify        simplify annotation track to show genes rather than transcripts
-  --fasta               fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files
-  --mod                 modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC
-  --dendro              make dendrogram output plot to show hierarchical clutstering of the input samples/haplotypes
-  -v, --version         print version and exit
+  -h, --help              show this help message and exit
+  -f, --files             list with nanopolish (processed with calculate_methylation_frequency.py) files or BAM/CRAM files
+  -t, --table             methfreqtable or overviewtable input
+  -w, --window            region to visualise, format: chr:start-end (example: chr20:58839718-58911192)
+  -n, --names             list with sample names
+  --gff, --gtf            add annotation track based on GTF/GFF file
+  --expand                number of base pairs to expand the window with in both directions
+  --outtable              file to write the frequencies table to in tsv format
+  --outfig                file to write output heatmap to, default: methylmap_{chr}_{start}_{end}.html (missing paths will be created)
+  --groups                list of experimental group for each sample
+  -s, --simplify          simplify annotation track to show genes rather than transcripts
+  --fasta                 fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files
+  --mod                   modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC
+  --dendro                perform hierarchical clustering on the samples/haplotypes and visualize with dendrogram on sorted heatmap as output
+  -v, --version           print version and exit
   ```
 
 ### MORE INFORMATION

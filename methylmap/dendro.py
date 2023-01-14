@@ -4,8 +4,7 @@ import methylmap.plots as plots
 import plotly.figure_factory as ff
 
 
-
-def make_dendro(methfreqtable, outdendro,window):
+def make_dendro(methfreqtable,window):
     number_of_nan_values = methfreqtable.isna().sum().sum()
     if number_of_nan_values != 0:
         logging.warning(
@@ -30,12 +29,10 @@ def make_dendro(methfreqtable, outdendro,window):
     methfreqtable_transposed.reset_index(drop=True, inplace=True)
 
     den = ff.create_dendrogram(methfreqtable_transposed, labels=samples)
-    den.update_layout(title="Dendrogram")
 
-    plots.create_output_dendrogram(den,outdendro,window)
 
     list_sorted_samples = den.layout.xaxis.ticktext.tolist()
     
     methfreqtable = methfreqtable.reindex(columns=list_sorted_samples)
 
-    return methfreqtable
+    return methfreqtable, den, list_sorted_samples
