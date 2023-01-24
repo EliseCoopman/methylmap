@@ -36,6 +36,7 @@ Supported input possibilities are:
 ### INSTALLATION
 
 pip install methylmap
+
 conda install methylmap
 
 ### USAGE
