@@ -37,7 +37,7 @@ Supported input possibilities are:
 
 pip install methylmap
 
-conda install methylmap
+conda install -c bioconda methylmap
 
 ### USAGE
 
