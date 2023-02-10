@@ -151,12 +151,9 @@ def meth_browser(
         fig.update_layout(showlegend=False)
         fig["data"][0]["x"] = den.layout.xaxis.tickvals
 
-    if dendro and gff:
-        fig["layout"]["xaxis4"]["tickvals"] = den.layout.xaxis.tickvals
-        fig["layout"]["xaxis4"]["ticktext"] = list_sorted_samples
-    if dendro and not gff:
-        fig["layout"]["xaxis2"]["tickvals"] = den.layout.xaxis.tickvals
-        fig["layout"]["xaxis2"]["ticktext"] = list_sorted_samples
+        dendro_xaxis = "xaxis4" if gff else "xaxis2"
+        fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
+        fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
 
     plots.create_output_methylmap(fig, outfig, window)
 
