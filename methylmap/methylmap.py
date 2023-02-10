@@ -5,6 +5,12 @@ from methylmap.import_data import read_mods
 from methylmap.import_data import Region
 from methylmap.version import __version__
 
+import dash
+from dash import dcc
+from dash import html
+from dash.dependencies import Input, Output, State
+
+
 import os
 import sys
 import numpy as np
@@ -13,21 +19,18 @@ from argparse import ArgumentParser
 
 def main():
     args = get_args()
-    meth_browser(
-        files=args.files,
-        table=args.table,
-        outtable=args.outtable,
-        outfig=args.outfig,
-        names=args.names,
-        window=args.window,
-        expand=args.expand,
-        gff=args.gff,
-        groups=args.groups,
-        simplify=args.simplify,
-        fasta=args.fasta,
-        mod=args.mod,
-        dendro=args.dendro,
+    app = dash.Dash(__name__)
+    app.layout = html.Div(
+        children=[
+            html.H1(
+                children="Methylmap",
+            ),
+            dcc.Input(id="input-box", type="text", value=args.window),
+            html.Button(id="confirm-button", n_clicks=0, children="Confirm"),
+            meth_browser(app, args),
+        ]
     )
+    app.run_server(debug=True)
 
 
 def get_args():
@@ -103,59 +106,75 @@ def get_args():
     return args
 
 
-def meth_browser(
-    files,
-    table,
-    outfig=None,
-    outtable=False,
-    names=False,
-    window=False,
-    expand=False,
-    gff=False,
-    groups=False,
-    simplify=False,
-    fasta=False,
-    mod=False,
-    dendro=False,
-):
-    if window:
-        window = Region(window, expand)
+def meth_browser(app, args):
+    @app.callback(
+        Output(component_id="plot", component_property="children"),
+        [Input(component_id="confirm-button", component_property="n_clicks")],
+        [State(component_id="input-box", component_property="value")],
+    )
+    def update_plots(n_clicks, window):
+        if window:
+            window = Region(window, args.expand)
 
-    num_col = 2 if gff else 1  # number of subplots (columns) needed
-    num_row = 2 if dendro else 1
-    subplots = plots.create_subplots(num_col, num_row)
+        num_col = 2 if args.gff else 1  # number of subplots (columns) needed
+        num_row = 2 if args.dendro else 1
+        subplots = plots.create_subplots(num_col, num_row)
 
-    # frequencies table with all meth frequencies of all samples
-    meth_data, window = read_mods(files, table, names, window, groups, gff, fasta, mod, dendro)
-    if dendro:
-        meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
-    meth_data.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
-    fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
-
-    if gff:
-        annotation_traces = annotation.gff_annotation(gff, window, simplify)
-        for annot_trace in annotation_traces:
-            fig.append_trace(trace=annot_trace, row=num_row, col=1)
-        fig.update_xaxes(title_text="", showticklabels=False, zeroline=False, row=num_row, col=1)
-        fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
-
-    if dendro:
-        for trace in den.select_traces():
-            fig.add_trace(trace, row=1, col=num_col)
-        fig.update_xaxes(
-            title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col
+        # frequencies table with all meth frequencies of all samples
+        meth_data, window = read_mods(
+            args.files,
+            args.table,
+            args.names,
+            window,
+            args.groups,
+            args.gff,
+            args.fasta,
+            args.mod,
+            args.dendro,
         )
-        fig.update_yaxes(
-            title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col
-        )
-        fig.update_layout(showlegend=False)
-        fig["data"][0]["x"] = den.layout.xaxis.tickvals
+        if args.dendro:
+            meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
+        meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
+        fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
 
-        dendro_xaxis = "xaxis4" if gff else "xaxis2"
-        fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
-        fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
+        if args.gff:
+            annotation_traces = annotation.gff_annotation(args.gff, window, args.simplify)
+            for annot_trace in annotation_traces:
+                fig.append_trace(trace=annot_trace, row=num_row, col=1)
+            fig.update_xaxes(
+                title_text="", showticklabels=False, zeroline=False, row=num_row, col=1
+            )
+            fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
 
-    plots.create_output_methylmap(fig, outfig, window)
+        if args.dendro:
+            for trace in den.select_traces():
+                fig.add_trace(trace, row=1, col=num_col)
+            fig.update_xaxes(
+                title_text="",
+                showticklabels=False,
+                zeroline=False,
+                showgrid=False,
+                row=1,
+                col=num_col,
+            )
+            fig.update_yaxes(
+                title_text="",
+                showticklabels=False,
+                zeroline=False,
+                showgrid=False,
+                row=1,
+                col=num_col,
+            )
+            fig.update_layout(showlegend=False)
+            fig["data"][0]["x"] = den.layout.xaxis.tickvals
+
+            dendro_xaxis = "xaxis4" if args.gff else "xaxis2"
+            fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
+            fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
+            # plots.create_output_methylmap(fig, outfig, window)
+        return html.Div(dcc.Graph(figure=fig), id="plot")
+
+    return html.Div(id="plot")
 
 
 if __name__ == "__main__":
