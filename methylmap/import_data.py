@@ -131,10 +131,9 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
 
             header = gzip.open(file, "rt").readline().rstrip().split("\t")
             table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
-            logging.info("Read the file in a dataframe.")
         else:
             table = pd.read_csv(file, sep="\t")
-            logging.info("Read the file in a dataframe.")
+        logging.info("Read the file in a dataframe.")
         table.drop(
             ["group_sequence", "called_sites_methylated", "num_motifs_in_group", "called_sites"],
             axis=1,
@@ -201,17 +200,14 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
                     "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
                 )
             chrom = df.iloc[0, df.columns.get_loc("chrom")]
-            if chrom.startswith("chr"):  # if in format "chr1"
-                chrom = chrom
-            else:  # if in format "1"
-                chrom = "chr" + chrom
+            if not chrom.startswith("chr"):
+                chrom = f"chr{chrom}"
             numberofpositions = len(df) - 1
             begin = float(df["position"].iat[0])
             end = float(df["position"].iat[numberofpositions])
             window = Region(f"{chrom}:{round(begin)}-{round(end)}")
 
-    df.drop(["chrom"], axis=1, inplace=True)
-    df.set_index("position", inplace=True)
+    df = df.drop(["chrom"], axis=1).set_index("position")
 
     if len(df) == 0:
         logging.error(
