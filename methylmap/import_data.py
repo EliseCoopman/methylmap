@@ -13,7 +13,7 @@ class Region(object):
         try:
             self.chromosome, interval = region.replace(",", "").split(":")
             try:
-                #see if just integer chromosomes are used
+                # see if just integer chromosomes are used
                 self.chromosome = int(self.chromosome)
             except ValueError:
                 pass
@@ -26,7 +26,7 @@ class Region(object):
         if expand:
             self.begin = self.begin - int(expand)
             self.end = self.end + int(expand)
-        self.start = self.begin #start as alias for begin
+        self.start = self.begin  # start as alias for begin
         self.size = self.end - self.begin
         if self.size < 0:
             sys.exit(
@@ -53,22 +53,22 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
         elif file_type == "methfrequencytable":
             return parse_methfrequencytable(table, names, window, groups, gff, dendro)
         elif file_type in ["cram", "bam"]:
-            rc = subprocess.call(['which', 'modbam2bed'])
-            if not rc == 0:
-                sys.exit(f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed")
-            else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+            return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
-            rc = subprocess.call(['which', 'modbam2bed'])
-            if not rc == 0:
-                sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
-            else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+            return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
         sys.stderr.write("\n\n\nError processing input file(s)!\n")
         raise
+
+
+def check_modbam2bed():
+    rc = subprocess.call(["which", "modbam2bed"])
+    if rc != 0:
+        sys.exit(
+            f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
+        )
 
 
 def parse_overviewtable(table):
@@ -228,12 +228,12 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
     if groups:
         logging.info("Sort columns of methfrequencytable based on group")
         if dendro:
-                logging.warning(
-                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
-                )
-                sys.stderr.write(
-                    "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
-                )
+            logging.warning(
+                "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+            )
+            sys.stderr.write(
+                "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+            )
         else:
             headerlist = list(df.columns.values)
             if len(headerlist) == len(groups):
@@ -256,6 +256,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
     """
     Converts a bam/cram file to a pandas dataframe.
     """
+    check_modbam2bed()
     if not fasta:
         logging.info("Stop script when no --fasta input")
         sys.exit(
@@ -303,7 +304,13 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
             "methylated_frequency",
         ]
 
-        table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
+        table = pd.read_csv(
+            modbam_stream.stdout,
+            sep="\t",
+            header=None,
+            names=headerlist,
+            usecols=["position", "methylated_frequency"],
+        )
         logging.info("Read the file in a dataframe.")
         table = table.set_index("position")
         dfs.append(table.rename(columns={"methylated_frequency": name}))
@@ -339,8 +346,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
                     methfreqtable = methfreqtable.reindex(columns=orderedlist)
                 else:
                     sys.exit(
-                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?")
-                    
+                        f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                    )
+
     return methfreqtable, window
 
 
