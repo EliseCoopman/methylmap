@@ -9,20 +9,23 @@ from pathlib import Path
 
 
 class Region(object):
-    def __init__(self, region, expand=False):
-        try:
-            self.chromosome, interval = region.replace(",", "").split(":")
+    def __init__(self, region=None, expand=False, tup=None):
+        if tup:
+            self.chromosome, self.begin, self.end = tup
+        else:
             try:
-                # see if just integer chromosomes are used
-                self.chromosome = int(self.chromosome)
+                self.chromosome, interval = region.replace(",", "").split(":")
+                try:
+                    # see if just integer chromosomes are used
+                    self.chromosome = int(self.chromosome)
+                except ValueError:
+                    pass
+                self.begin, self.end = [int(i) for i in interval.split("-")]
             except ValueError:
-                pass
-            self.begin, self.end = [int(i) for i in interval.split("-")]
-        except ValueError:
-            sys.exit(
-                "\n\nERROR: Window (-w/--window) inproperly formatted, "
-                "an example of accepted formats is:\n'chr5:150200605-150423790'\n\n"
-            )
+                sys.exit(
+                    "\n\nERROR: Window (-w/--window) inproperly formatted, "
+                    "an example of accepted formats is:\n'chr5:150200605-150423790'\n\n"
+                )
         if expand:
             self.begin = self.begin - int(expand)
             self.end = self.end + int(expand)
@@ -35,6 +38,11 @@ class Region(object):
             )
         self.string = f"{self.chromosome}_{self.begin}_{self.end}"
         self.fmt = f"{self.chromosome}:{self.begin}-{self.end}"
+
+    def __mul__(self, other):
+        half_size = self.size * other
+        middlepoint = (self.begin + self.end) / 2
+        return Region(tup=(self.chromosome, middlepoint - half_size, middlepoint + half_size))
 
 
 def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):

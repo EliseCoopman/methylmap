@@ -5,10 +5,7 @@ from methylmap.import_data import read_mods
 from methylmap.import_data import Region
 from methylmap.version import __version__
 
-import dash
-from dash import dcc
-from dash import html
-from dash.dependencies import Input, Output, State
+from dash import Dash, dcc, html, Input, Output, State, ctx
 
 
 import os
@@ -19,7 +16,7 @@ from argparse import ArgumentParser
 
 def main():
     args = get_args()
-    app = dash.Dash(__name__)
+    app = Dash(__name__)
     app.layout = html.Div(
         children=[
             html.H1(
@@ -27,6 +24,10 @@ def main():
             ),
             dcc.Input(id="input-box", type="text", value=args.window),
             html.Button(id="confirm-button", n_clicks=0, children="Confirm"),
+            html.Button(id="button-o3", n_clicks=0, children="Zoom out 3x"),
+            html.Button(id="button-o10", n_clicks=0, children="Zoom out 10x"),
+            html.Button(id="button-i3", n_clicks=0, children="Zoom in 3x"),
+            html.Button(id="button-i10", n_clicks=0, children="Zoom in 10x"),
             meth_browser(app, args),
         ]
     )
@@ -109,13 +110,29 @@ def get_args():
 def meth_browser(app, args):
     @app.callback(
         Output(component_id="plot", component_property="children"),
-        [Input(component_id="confirm-button", component_property="n_clicks")],
+        [
+            Input(component_id="confirm-button", component_property="n_clicks"),
+            Input(component_id="button-o3", component_property="n_clicks"),
+            Input(component_id="button-o10", component_property="n_clicks"),
+            Input(component_id="button-i3", component_property="n_clicks"),
+            Input(component_id="button-i10", component_property="n_clicks"),
+        ],
         [State(component_id="input-box", component_property="value")],
     )
-    def update_plots(n_clicks, window):
-        if window:
-            window = Region(window, args.expand)
-
+    def update_plots(button_confirm, button_o3, button_o10, button_i3, button_i10, window):
+        window = Region(window)
+        if "button-o3" == ctx.triggered_id:
+            window = window * 3
+        elif "button-o10" == ctx.triggered_id:
+            window = window * 10
+        elif "button-i3" == ctx.triggered_id:
+            window = window / 3
+        elif "button-i10" == ctx.triggered_id:
+            window = window / 10
+        elif "confirm-button" == ctx.triggered_id:
+            window = Region(region=window, expand=args.expand)
+        else:
+            print("else!")
         num_col = 2 if args.gff else 1  # number of subplots (columns) needed
         num_row = 2 if args.dendro else 1
         subplots = plots.create_subplots(num_col, num_row)
