@@ -2,7 +2,7 @@ import methylmap.plots as plots
 import methylmap.annotation as annotation
 import methylmap.dendro as dendrogram
 from methylmap.import_data import read_mods
-from methylmap.import_data import Region
+from methylmap.region import Region
 from methylmap.version import __version__
 
 from dash import Dash, dcc, html, Input, Output, State, ctx
@@ -22,7 +22,7 @@ def main():
             html.H1(
                 children="Methylmap",
             ),
-            dcc.Input(id="input-box", type="text", value=args.window),
+            input_box(app, args),
             html.Button(id="confirm-button", n_clicks=0, children="Confirm"),
             html.Button(id="button-o3", n_clicks=0, children="Zoom out 3x"),
             html.Button(id="button-o10", n_clicks=0, children="Zoom out 10x"),
@@ -117,10 +117,10 @@ def meth_browser(app, args):
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
         ],
-        [State(component_id="input-box", component_property="value")],
+        [State(component_id="input-box", component_property="children")],
     )
     def update_plots(button_confirm, button_o3, button_o10, button_i3, button_i10, window):
-        window = Region(window)
+        window = Region(window["props"]["value"]) if window else Region(args.window)
         if "button-o3" == ctx.triggered_id:
             window = window * 3
         elif "button-o10" == ctx.triggered_id:
@@ -129,10 +129,6 @@ def meth_browser(app, args):
             window = window / 3
         elif "button-i10" == ctx.triggered_id:
             window = window / 10
-        elif "confirm-button" == ctx.triggered_id:
-            window = Region(region=window, expand=args.expand)
-        else:
-            print("else!")
         num_col = 2 if args.gff else 1  # number of subplots (columns) needed
         num_row = 2 if args.dendro else 1
         subplots = plots.create_subplots(num_col, num_row)
@@ -192,6 +188,32 @@ def meth_browser(app, args):
         return html.Div(dcc.Graph(figure=fig), id="plot")
 
     return html.Div(id="plot")
+
+
+def input_box(app, args):
+    @app.callback(
+        Output(component_id="input-box", component_property="children"),
+        [
+            Input(component_id="button-o3", component_property="n_clicks"),
+            Input(component_id="button-o10", component_property="n_clicks"),
+            Input(component_id="button-i3", component_property="n_clicks"),
+            Input(component_id="button-i10", component_property="n_clicks"),
+        ],
+        [State(component_id="input-box", component_property="children")],
+    )
+    def update_value(button_o3, button_o10, button_i3, button_i10, window):
+        window = Region(window["props"]["value"]) if window else Region(args.window)
+        if "button-o3" == ctx.triggered_id:
+            window = window * 3
+        elif "button-o10" == ctx.triggered_id:
+            window = window * 10
+        elif "button-i3" == ctx.triggered_id:
+            window = window / 3
+        elif "button-i10" == ctx.triggered_id:
+            window = window / 10
+        return html.Div(dcc.Input(type="text", value=window.fmt), id="input-box")
+
+    return html.Div(dcc.Input(type="text", value=args.window), id="input-box")
 
 
 if __name__ == "__main__":
