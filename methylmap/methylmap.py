@@ -28,6 +28,12 @@ def main():
             html.Button(id="button-o10", n_clicks=0, children="Zoom out 10x"),
             html.Button(id="button-i3", n_clicks=0, children="Zoom in 3x"),
             html.Button(id="button-i10", n_clicks=0, children="Zoom in 10x"),
+            dcc.RadioItems(
+                options=["File order", "Hierarchical clustering"],
+                value="Hierarchical clustering" if args.dendro else "File order",
+                inline=True,
+                id="dendro",
+            ),
             meth_browser(app, args),
         ]
     )
@@ -116,10 +122,13 @@ def meth_browser(app, args):
             Input(component_id="button-o10", component_property="n_clicks"),
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
+            Input(component_id="dendro", component_property="value"),
         ],
         [State(component_id="input-box", component_property="children")],
     )
-    def update_plots(button_confirm, button_o3, button_o10, button_i3, button_i10, window):
+    def update_plots(
+        button_confirm, button_o3, button_o10, button_i3, button_i10, switch_dendro, window
+    ):
         window = Region(window["props"]["value"]) if window else Region(args.window)
         if "button-o3" == ctx.triggered_id:
             window = window * 3
@@ -129,10 +138,10 @@ def meth_browser(app, args):
             window = window / 3
         elif "button-i10" == ctx.triggered_id:
             window = window / 10
+        dendro = True if switch_dendro == "Hierarchical clustering" else False
         num_col = 2 if args.gff else 1  # number of subplots (columns) needed
-        num_row = 2 if args.dendro else 1
+        num_row = 2 if dendro else 1
         subplots = plots.create_subplots(num_col, num_row)
-
         # frequencies table with all meth frequencies of all samples
         meth_data, window = read_mods(
             args.files,
@@ -143,9 +152,9 @@ def meth_browser(app, args):
             args.gff,
             args.fasta,
             args.mod,
-            args.dendro,
+            dendro,
         )
-        if args.dendro:
+        if dendro:
             meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
         meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
         fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
@@ -159,7 +168,7 @@ def meth_browser(app, args):
             )
             fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
 
-        if args.dendro:
+        if dendro:
             for trace in den.select_traces():
                 fig.add_trace(trace, row=1, col=num_col)
             fig.update_xaxes(
