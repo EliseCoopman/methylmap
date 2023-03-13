@@ -26,6 +26,7 @@ def main():
         simplify=args.simplify,
         fasta=args.fasta,
         mod=args.mod,
+        hapl=args.hapl,
         dendro=args.dendro
     )
 
@@ -64,6 +65,7 @@ def get_args():
         default="5mC",
         choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
     )
+    parser.add_argument("--hapl", action="store_true", help="display modification frequencies in input BAM/CRAM file for each haplotype (alternating haplotypes in methylmap)")
     parser.add_argument("--dendro", action="store_true", help="perform hierarchical clustering on the samples/haplotypes and visualize with dendrogram on sorted heatmap as output")
     parser.add_argument(
         "-v",
@@ -99,6 +101,7 @@ def meth_browser(
     simplify=False,
     fasta=False,
     mod=False,
+    hapl=False,
     dendro=False
 ):
     if window:
@@ -109,7 +112,7 @@ def meth_browser(
     subplots = plots.create_subplots(num_col, num_row)
 
     # frequencies table with all meth frequencies of all samples
-    meth_data, window = read_mods(files, table, names, window, groups, gff, fasta, mod, dendro)
+    meth_data, window = read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro)
     if dendro:
         meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
     meth_data.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)

@@ -37,7 +37,7 @@ class Region(object):
         self.fmt = f"{self.chromosome}:{self.begin}-{self.end}"
 
 
-def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
+def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro):
     """
     Deciding of input file(s) type and processing them.
     """
@@ -57,13 +57,13 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
             if not rc == 0:
                 sys.exit(f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed")
             else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
             rc = subprocess.call(['which', 'modbam2bed'])
             if not rc == 0:
                 sys.exit(f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed")
             else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -252,7 +252,7 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
     return df, window
 
 
-def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
+def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
     """
     Converts a bam/cram file to a pandas dataframe.
     """
@@ -261,35 +261,14 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
         sys.exit(
             f"ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
         )
-
     if table:
         logging.info("Extract files and names from overviewtable")
         files, names = parse_overviewtable(table)
 
     dfs = []
-    for file, name in zip(files, names):
-        try:
-            logging.info(
-                "Extract modification frequencies from bam/cram files using modbam2bed tool"
-            )
-            modbam_stream = subprocess.Popen(
-                shlex.split(
-                    f"modbam2bed --mod_base={mod} --region={window.fmt} --cpg {fasta} {file}"
-                ),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except FileNotFoundError as e:
-            logging.error(e, exc_info=True)
-            sys.stderr.write("\n\nError when making bedfile of bam/cram file with modbam2bed.\n")
-            sys.stderr.write(
-                "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
-            )
-            sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
-            raise
-        if modbam_stream.returncode:
-            sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
-        headerlist = [
+    dfs_1 = []
+    dfs_2 = []
+    headerlist = [
             "chromosome",
             "start",
             "position",
@@ -302,12 +281,80 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
             "read_coverage",
             "methylated_frequency",
         ]
-
-        table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
-        logging.info("Read the file in a dataframe.")
-        table = table.set_index("position")
-        dfs.append(table.rename(columns={"methylated_frequency": name}))
-
+    for file, name in zip(files, names):
+        if not hapl:
+            try:
+                logging.info(
+                    "Extract modification frequencies from bam/cram files using modbam2bed tool"
+                )
+                modbam_stream = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} --cpg {fasta} {file}"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except FileNotFoundError as e:
+                logging.error(e, exc_info=True)
+                sys.stderr.write("\n\nError when making bedfile of bam/cram file with modbam2bed.\n")
+                sys.stderr.write(
+                    "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
+                )
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
+                raise
+            if modbam_stream.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
+        
+            table = pd.read_csv(modbam_stream.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
+            logging.info("Read the file in a dataframe.")
+            table = table.set_index("position")
+            dfs.append(table.rename(columns={"methylated_frequency": name}))
+        if hapl:
+            try:
+                logging.info(
+                    "Extract modification frequencies from haplotype 1 in bam/cram files using modbam2bed tool"
+                )
+                modbam_stream_1 = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} --cpg {fasta} {file} --tag_name=HP --tag_value=1"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                logging.info(
+                    "Extract modification frequencies from haplotype 2 in bam/cram files using modbam2bed tool"
+                )
+                modbam_stream_2 = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} --cpg {fasta} {file} --tag_name=HP --tag_value=2"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except FileNotFoundError as e:
+                logging.error(e, exc_info=True)
+                sys.stderr.write("\n\nError when making bedfile of bam/cram file with modbam2bed.\n")
+                sys.stderr.write(
+                    "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
+                )
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_1.stderr.read()}\n")
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_2.stderr.read()}\n")
+                raise
+            if modbam_stream_1.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream_1.stderr.read()}\n")
+            if modbam_stream_2.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream_2.stderr.read()}\n")    
+        
+            table_1 = pd.read_csv(modbam_stream_1.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
+            table_1 = table_1.set_index("position")
+            table_2 = pd.read_csv(modbam_stream_2.stdout, sep="\t", header=None,names=headerlist, usecols=["position","methylated_frequency"])
+            table_2 = table_2.set_index("position")
+            logging.info("Read the file in a dataframe per haplotype.")
+            dfs_1.append(table_1.rename(columns={"methylated_frequency": f"{name}_1"}))
+            dfs_2.append(table_2.rename(columns={"methylated_frequency": f"{name}_2"}))
+            import itertools
+            dfs = list(itertools.chain(*zip(dfs_1,dfs_2)))
+    
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
     if len(methfrequencytable) == 0:
@@ -331,8 +378,11 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
                     "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
                 )
             else:
+                if hapl:
+                    groupshapl = list(itertools.chain(*zip(groups,groups)))
+                    groups = groupshapl
                 headerlist = list(methfreqtable.columns.values)
-                if len(headerlist) == len(groups):
+                if len(headerlist) == len(groups): 
                     res = zip(headerlist, groups)
                     output = sorted(list(res), key=lambda x: x[1])
                     orderedlist = [i[0] for i in output]
