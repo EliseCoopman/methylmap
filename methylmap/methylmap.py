@@ -2,7 +2,7 @@ import methylmap.plots as plots
 import methylmap.annotation as annotation
 import methylmap.dendro as dendrogram
 from methylmap.import_data import read_mods
-from methylmap.import_data import Region
+from methylmap.region import Region
 from methylmap.version import __version__
 
 import os
@@ -27,12 +27,14 @@ def main():
         fasta=args.fasta,
         mod=args.mod,
         hapl=args.hapl,
-        dendro=args.dendro
+        dendro=args.dendro,
     )
 
 
 def get_args():
-    parser = ArgumentParser(description="Plotting tool for population scale nucleotide modifications.")
+    parser = ArgumentParser(
+        description="Plotting tool for population scale nucleotide modifications."
+    )
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument(
         "-f",
@@ -46,7 +48,7 @@ def get_args():
         "--window",
         help="region to visualise, format: chr:start-end (example: chr20:58839718-58911192)",
     )
-    parser.add_argument("-n", "--names", nargs="*", default=[],help="list with sample names")
+    parser.add_argument("-n", "--names", nargs="*", default=[], help="list with sample names")
     parser.add_argument("--gff", "--gtf", help="add annotation track based on GTF/GFF file")
     parser.add_argument(
         "--expand",
@@ -55,18 +57,37 @@ def get_args():
         default=0,
     )
     parser.add_argument("--outtable", help="file to write the frequencies table to in tsv format")
-    parser.add_argument("--outfig", help="file to write output heatmap to, default: methylmap_{chr}_{start}_{end}.html (missing paths will be created)")
+    parser.add_argument(
+        "--outfig",
+        help="file to write output heatmap to, default: methylmap_{chr}_{start}_{end}.html (missing paths will be created)",
+    )
     parser.add_argument("--groups", nargs="*", help="list of experimental group for each sample")
-    parser.add_argument("-s", "--simplify", action="store_true", help="simplify annotation track to show genes rather than transcripts")  # default: False
-    parser.add_argument("--fasta", help="fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files")
+    parser.add_argument(
+        "-s",
+        "--simplify",
+        action="store_true",
+        help="simplify annotation track to show genes rather than transcripts",
+    )  # default: False
+    parser.add_argument(
+        "--fasta",
+        help="fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files",
+    )
     parser.add_argument(
         "--mod",
         help="modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC",
         default="5mC",
         choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
     )
-    parser.add_argument("--hapl", action="store_true", help="display modification frequencies in input BAM/CRAM file for each haplotype (alternating haplotypes in methylmap)")
-    parser.add_argument("--dendro", action="store_true", help="perform hierarchical clustering on the samples/haplotypes and visualize with dendrogram on sorted heatmap as output")
+    parser.add_argument(
+        "--hapl",
+        action="store_true",
+        help="display modification frequencies in input BAM/CRAM file for each haplotype (alternating haplotypes in methylmap)",
+    )
+    parser.add_argument(
+        "--dendro",
+        action="store_true",
+        help="perform hierarchical clustering on the samples/haplotypes and visualize with dendrogram on sorted heatmap as output",
+    )
     parser.add_argument(
         "-v",
         "--version",
@@ -102,7 +123,7 @@ def meth_browser(
     fasta=False,
     mod=False,
     hapl=False,
-    dendro=False
+    dendro=False,
 ):
     if window:
         window = Region(window, expand)
@@ -112,7 +133,9 @@ def meth_browser(
     subplots = plots.create_subplots(num_col, num_row)
 
     # frequencies table with all meth frequencies of all samples
-    meth_data, window = read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro)
+    meth_data, window = read_mods(
+        files, table, names, window, groups, gff, fasta, mod, hapl, dendro
+    )
     if dendro:
         meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
     meth_data.to_csv(outtable, sep="\t", na_rep=np.NaN, header=True)
@@ -124,23 +147,28 @@ def meth_browser(
             fig.append_trace(trace=annot_trace, row=num_row, col=1)
         fig.update_xaxes(title_text="", showticklabels=False, zeroline=False, row=num_row, col=1)
         fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
-    
+
     if dendro:
         for trace in den.select_traces():
             fig.add_trace(trace, row=1, col=num_col)
-        fig.update_xaxes(title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col)
-        fig.update_yaxes(title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col)
+        fig.update_xaxes(
+            title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col
+        )
+        fig.update_yaxes(
+            title_text="", showticklabels=False, zeroline=False, showgrid=False, row=1, col=num_col
+        )
         fig.update_layout(showlegend=False)
-        fig['data'][0]['x'] = den.layout.xaxis.tickvals
+        fig["data"][0]["x"] = den.layout.xaxis.tickvals
 
     if dendro and gff:
-        fig['layout']['xaxis4']['tickvals'] = den.layout.xaxis.tickvals
-        fig['layout']['xaxis4']['ticktext'] = list_sorted_samples
+        fig["layout"]["xaxis4"]["tickvals"] = den.layout.xaxis.tickvals
+        fig["layout"]["xaxis4"]["ticktext"] = list_sorted_samples
     if dendro and not gff:
-        fig['layout']['xaxis2']['tickvals'] = den.layout.xaxis.tickvals
-        fig['layout']['xaxis2']['ticktext'] = list_sorted_samples
+        fig["layout"]["xaxis2"]["tickvals"] = den.layout.xaxis.tickvals
+        fig["layout"]["xaxis2"]["ticktext"] = list_sorted_samples
 
-    plots.create_output_methylmap(fig,outfig, window)
+    plots.create_output_methylmap(fig, outfig, window)
+
 
 if __name__ == "__main__":
     main()

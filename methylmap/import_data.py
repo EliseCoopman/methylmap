@@ -6,35 +6,8 @@ import subprocess
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from methylmap.region import Region
 
-
-class Region(object):
-    def __init__(self, region, expand=False):
-        try:
-            self.chromosome, interval = region.replace(",", "").split(":")
-            try:
-                # see if just integer chromosomes are used
-                self.chromosome = int(self.chromosome)
-            except ValueError:
-                pass
-            self.begin, self.end = [int(i) for i in interval.split("-")]
-        except ValueError:
-            sys.exit(
-                "\n\nERROR: Window (-w/--window) inproperly formatted, "
-                "an example of accepted formats is:\n'chr5:150200605-150423790'\n\n"
-            )
-        if expand:
-            self.begin = self.begin - int(expand)
-            self.end = self.end + int(expand)
-        self.start = self.begin  # start as alias for begin
-        self.size = self.end - self.begin
-        if self.size < 0:
-            sys.exit(
-                "\n\nERROR: Window (-w/--window) inproperly formatted, "
-                "begin of the interval has to be smaller than end\n\n"
-            )
-        self.string = f"{self.chromosome}_{self.begin}_{self.end}"
-        self.fmt = f"{self.chromosome}:{self.begin}-{self.end}"
 
 
 def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro):
@@ -56,7 +29,7 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro
             rc = subprocess.call(["which", "modbam2bed"])
             if not rc == 0:
                 sys.exit(
-                    f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
+                    "\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
                 )
             else:
                 return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
@@ -64,7 +37,7 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro
             rc = subprocess.call(["which", "modbam2bed"])
             if not rc == 0:
                 sys.exit(
-                    f"\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed"
+                    "\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed"
                 )
             else:
                 return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
@@ -151,10 +124,10 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
 
     if len(methfrequencytable) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
@@ -219,10 +192,10 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
 
     if len(df) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
+            "WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
+            "WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
 
     if names:
@@ -263,7 +236,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
     if not fasta:
         logging.info("Stop script when no --fasta input")
         sys.exit(
-            f"ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
+            "ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
         )
     if table:
         logging.info("Extract files and names from overviewtable")
@@ -397,10 +370,10 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
 
     if len(methfrequencytable) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
