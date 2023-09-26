@@ -9,7 +9,8 @@ from pathlib import Path
 from methylmap.region import Region
 
 
-def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
+
+def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro):
     """
     Deciding of input file(s) type and processing them.
     """
@@ -25,22 +26,26 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, dendro):
         elif file_type == "methfrequencytable":
             return parse_methfrequencytable(table, names, window, groups, gff, dendro)
         elif file_type in ["cram", "bam"]:
-            return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+            rc = subprocess.call(["which", "modbam2bed"])
+            if not rc == 0:
+                sys.exit(
+                    "\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
+                )
+            else:
+                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
-            return parse_bam(files, table, names, window, groups, fasta, mod, dendro)
+            rc = subprocess.call(["which", "modbam2bed"])
+            if not rc == 0:
+                sys.exit(
+                    "\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed"
+                )
+            else:
+                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
         sys.stderr.write("\n\n\nError processing input file(s)!\n")
         raise
-
-
-def check_modbam2bed():
-    rc = subprocess.call(["which", "modbam2bed"])
-    if rc != 0:
-        sys.exit(
-            f"\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
-        )
 
 
 def parse_overviewtable(table):
@@ -103,6 +108,7 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
 
             header = gzip.open(file, "rt").readline().rstrip().split("\t")
             table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
+            logging.info("Read the file in a dataframe.")
         else:
             table = pd.read_csv(file, sep="\t")
         logging.info("Read the file in a dataframe.")
@@ -118,10 +124,10 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
 
     if len(methfrequencytable) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
@@ -172,21 +178,24 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
                     "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
                 )
             chrom = df.iloc[0, df.columns.get_loc("chrom")]
-            if not chrom.startswith("chr"):
-                chrom = f"chr{chrom}"
+            if chrom.startswith("chr"):  # if in format "chr1"
+                chrom = chrom
+            else:  # if in format "1"
+                chrom = "chr" + chrom
             numberofpositions = len(df) - 1
             begin = float(df["position"].iat[0])
             end = float(df["position"].iat[numberofpositions])
             window = Region(f"{chrom}:{round(begin)}-{round(end)}")
-
-    df = df.drop(["chrom"], axis=1).set_index("position")
+    
+    df.drop(["chrom"], axis=1, inplace=True)
+    df.set_index("position", inplace=True)
 
     if len(df) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
+            "WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Does the input table contain data?"
+            "WARNING: length of methylation frequency table is zero. Does the input table contain data?"
         )
 
     if names:
@@ -220,77 +229,151 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
     return df, window
 
 
-def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
+def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
     """
     Converts a bam/cram file to a pandas dataframe.
     """
-    check_modbam2bed()
     if not fasta:
         logging.info("Stop script when no --fasta input")
         sys.exit(
-            f"ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
+            "ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
         )
-
     if table:
         logging.info("Extract files and names from overviewtable")
         files, names = parse_overviewtable(table)
 
     dfs = []
+    dfs_1 = []
+    dfs_2 = []
+    headerlist = [
+        "chromosome",
+        "start",
+        "position",
+        "modification",
+        "score",
+        "strand",
+        "start2",
+        "end2",
+        "column1",
+        "read_coverage",
+        "methylated_frequency",
+        "Ncan",
+        "Nmod",
+        "Nfilt",
+        "Nnocall",
+        "Naltmod",
+    ]
     for file, name in zip(files, names):
-        try:
-            logging.info(
-                "Extract modification frequencies from bam/cram files using modbam2bed tool"
-            )
-            modbam_stream = subprocess.Popen(
-                shlex.split(
-                    f"modbam2bed --mod_base={mod} --region={window.fmt} --cpg {fasta} {file}"
-                ),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except FileNotFoundError as e:
-            logging.error(e, exc_info=True)
-            sys.stderr.write("\n\nError when making bedfile of bam/cram file with modbam2bed.\n")
-            sys.stderr.write(
-                "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
-            )
-            sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
-            raise
-        if modbam_stream.returncode:
-            sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
-        headerlist = [
-            "chromosome",
-            "start",
-            "position",
-            "modification",
-            "score",
-            "strand",
-            "start2",
-            "end2",
-            "column1",
-            "read_coverage",
-            "methylated_frequency",
-        ]
+        if not hapl:
+            try:
+                logging.info(
+                    "Extract modification frequencies from bam/cram files using modbam2bed tool"
+                )
+                modbam_stream = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} -e --cpg {fasta} {file}"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except FileNotFoundError as e:
+                logging.error(e, exc_info=True)
+                sys.stderr.write(
+                    "\n\nError when making bedfile of bam/cram file with modbam2bed.\n"
+                )
+                sys.stderr.write(
+                    "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
+                )
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
+                raise
+            if modbam_stream.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
 
-        table = pd.read_csv(
-            modbam_stream.stdout,
-            sep="\t",
-            header=None,
-            names=headerlist,
-            usecols=["position", "methylated_frequency"],
-        )
-        logging.info("Read the file in a dataframe.")
-        table = table.set_index("position")
-        dfs.append(table.rename(columns={"methylated_frequency": name}))
+            table = pd.read_csv(
+                modbam_stream.stdout,
+                sep="\t",
+                header=None,
+                names=headerlist,
+                usecols=["position", "Nmod", "Ncan"],
+            )
+            table["methylated_frequency"] = table["Nmod"] / (table["Nmod"] + table["Ncan"])
+            table.drop(["Nmod", "Ncan"], axis=1, inplace=True)
+            logging.info("Read the file in a dataframe.")
+            table = table.set_index("position")
+            dfs.append(table.rename(columns={"methylated_frequency": name}))
+        if hapl:
+            try:
+                logging.info(
+                    "Extract modification frequencies from haplotype 1 in bam/cram files using modbam2bed tool"
+                )
+                modbam_stream_1 = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} -e --cpg {fasta} {file} --tag_name=HP --tag_value=1"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                logging.info(
+                    "Extract modification frequencies from haplotype 2 in bam/cram files using modbam2bed tool"
+                )
+                modbam_stream_2 = subprocess.Popen(
+                    shlex.split(
+                        f"modbam2bed --mod_base={mod} --region={window.fmt} -e --cpg {fasta} {file} --tag_name=HP --tag_value=2"
+                    ),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except FileNotFoundError as e:
+                logging.error(e, exc_info=True)
+                sys.stderr.write(
+                    "\n\nError when making bedfile of bam/cram file with modbam2bed.\n"
+                )
+                sys.stderr.write(
+                    "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
+                )
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_1.stderr.read()}\n")
+                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_2.stderr.read()}\n")
+                raise
+            if modbam_stream_1.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream_1.stderr.read()}\n")
+            if modbam_stream_2.returncode:
+                sys.exit(f"Received modbam2bed error:\n{modbam_stream_2.stderr.read()}\n")
+
+            table_1 = pd.read_csv(
+                modbam_stream_1.stdout,
+                sep="\t",
+                header=None,
+                names=headerlist,
+                usecols=["position", "Nmod", "Ncan"],
+            )
+            table_1["methylated_frequency"] = table_1["Nmod"] / (table_1["Nmod"] + table_1["Ncan"])
+            table_1.drop(["Nmod", "Ncan"], axis=1, inplace=True)
+            table_1 = table_1.set_index("position")
+            table_2 = pd.read_csv(
+                modbam_stream_2.stdout,
+                sep="\t",
+                header=None,
+                names=headerlist,
+                usecols=["position", "Nmod", "Ncan"],
+            )
+            table_2["methylated_frequency"] = table_2["Nmod"] / (table_2["Nmod"] + table_2["Ncan"])
+            table_2.drop(["Nmod", "Ncan"], axis=1, inplace=True)
+            table_2 = table_2.set_index("position")
+            logging.info("Read the file in a dataframe per haplotype.")
+            dfs_1.append(table_1.rename(columns={"methylated_frequency": f"{name}_1"}))
+            dfs_2.append(table_2.rename(columns={"methylated_frequency": f"{name}_2"}))
+            import itertools
+
+            dfs = list(itertools.chain(*zip(dfs_1, dfs_2)))
 
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
     if len(methfrequencytable) == 0:
         logging.error(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
         sys.exit(
-            f"WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
         )
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
@@ -306,6 +389,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
                     "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
                 )
             else:
+                if hapl:
+                    groupshapl = list(itertools.chain(*zip(groups, groups)))
+                    groups = groupshapl
                 headerlist = list(methfreqtable.columns.values)
                 if len(headerlist) == len(groups):
                     res = zip(headerlist, groups)
@@ -319,7 +405,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, dendro):
 
     return methfreqtable, window
 
-
+  
 def file_sniffer(filename):
     """
     Takes in a filename and tries to guess the input file type.

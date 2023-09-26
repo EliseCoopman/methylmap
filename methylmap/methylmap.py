@@ -120,6 +120,11 @@ def get_args():
         choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
     )
     parser.add_argument(
+        "--hapl",
+        action="store_true",
+        help="display modification frequencies in input BAM/CRAM file for each haplotype (alternating haplotypes in methylmap)",
+    )
+    parser.add_argument(
         "--dendro",
         action="store_true",
         help="perform hierarchical clustering on the samples/haplotypes and visualize with dendrogram on sorted heatmap as output",
@@ -143,6 +148,7 @@ def get_args():
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
     return args
+
 
 
 def meth_browser(app, args):
