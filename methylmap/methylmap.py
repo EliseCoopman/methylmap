@@ -217,6 +217,7 @@ def meth_browser(app, args):
             args.gff,
             args.fasta,
             args.mod,
+            args.hapl,
             dendro,
         )
         if dendro:
