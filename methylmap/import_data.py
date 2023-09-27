@@ -111,7 +111,7 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
             logging.info("Read the file in a dataframe.")
         else:
             table = pd.read_csv(file, sep="\t")
-            logging.info("Read the file in a dataframe.")
+        logging.info("Read the file in a dataframe.")
         table.drop(
             ["group_sequence", "called_sites_methylated", "num_motifs_in_group", "called_sites"],
             axis=1,
@@ -186,7 +186,7 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
             begin = float(df["position"].iat[0])
             end = float(df["position"].iat[numberofpositions])
             window = Region(f"{chrom}:{round(begin)}-{round(end)}")
-
+    
     df.drop(["chrom"], axis=1, inplace=True)
     df.set_index("position", inplace=True)
 
@@ -405,7 +405,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
 
     return methfreqtable, window
 
-
+  
 def file_sniffer(filename):
     """
     Takes in a filename and tries to guess the input file type.

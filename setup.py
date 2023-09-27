@@ -31,12 +31,7 @@ setup(
     keywords="methylation plot",
     packages=find_packages() + ["scripts"],
     python_requires=">=3",
-    install_requires=[
-        "pandas",
-        "numpy",
-        "plotly>=5.4.0",
-        "scipy"
-    ],
+    install_requires=["pandas", "numpy", "plotly>=5.4.0", "scipy", "dash"],
     package_data={"methylmap": []},
     package_dir={"methylmap": "methylmap"},
     include_package_data=True,
