@@ -6,7 +6,7 @@ from methylmap.region import Region
 from methylmap.version import __version__
 
 from dash import Dash, dcc, html, Input, Output, State, ctx
-
+from flask_caching import Cache
 
 import os
 import sys
@@ -14,10 +14,23 @@ import re
 import numpy as np
 from argparse import ArgumentParser
 
+external_stylesheets = [
+    # Dash CSS
+    "https://codepen.io/chriddyp/pen/bWLwgP.css",
+    # Loading screen CSS
+    "https://codepen.io/chriddyp/pen/brPBPO.css",
+]
+
+app = Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
+cache = Cache(
+    app.server,
+    config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory", "CACHE_THRESHOLD": 200},
+)
+
 
 def main():
     args = get_args()
-    app = Dash(__name__)
     app.layout = html.Div(
         children=[
             html.H1(
@@ -166,6 +179,7 @@ def meth_browser(app, args):
         ],
         [State(component_id="input-box", component_property="children")],
     )
+    @cache.memoize()
     def update_plots(
         button_confirm,
         button_o3,
@@ -209,19 +223,17 @@ def meth_browser(app, args):
         num_col = 2 if annotation else 1  # number of subplots (columns) needed
 
         subplots = plots.create_subplots(num_col, num_row)
-        # frequencies table with all meth frequencies of all samples
-        meth_data, window = read_mods(
-            args.files,
-            args.table,
-            args.names,
-            window,
-            args.groups,
-            args.gff,
-            args.fasta,
-            args.mod,
-            args.hapl,
-            dendro,
-        )
+
+        # If data is already cached, retrieve it from the store
+        cached_data = process_data(args, window, dendro)
+
+        if cached_data:
+            meth_data, window = cached_data
+        else:
+            # Expensive data processing is wrapped in this function, and the result is cached
+            meth_data, window = process_data(args, window, dendro)
+            cache.set((args, window, dendro), (meth_data, window))
+
         if dendro:
             meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
         meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
@@ -265,6 +277,23 @@ def meth_browser(app, args):
         return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
 
     return html.Div(id="plot")
+
+
+def process_data(args, window, dendro):
+    meth_data, window = read_mods(
+        args.files,
+        args.table,
+        args.names,
+        window,
+        args.groups,
+        args.gff,
+        args.fasta,
+        args.mod,
+        args.hapl,
+        dendro,
+    )
+    meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
+    return meth_data, window
 
 
 def input_box(app, args):
