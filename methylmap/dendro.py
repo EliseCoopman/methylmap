@@ -4,7 +4,7 @@ import methylmap.plots as plots
 import plotly.figure_factory as ff
 
 
-def make_dendro(methfreqtable,window):
+def make_dendro(methfreqtable):
     number_of_nan_values = methfreqtable.isna().sum().sum()
     if number_of_nan_values != 0:
         logging.warning(

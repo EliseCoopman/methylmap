@@ -3,6 +3,7 @@ import methylmap.annotation as annot
 import methylmap.dendro as dendrogram
 from methylmap.import_data import read_mods
 from methylmap.region import Region
+from methylmap.region import Region_extra
 from methylmap.version import __version__
 
 from dash import Dash, dcc, html, Input, Output, State, ctx
@@ -109,10 +110,6 @@ def get_args():
         default=0,
     )
     parser.add_argument("--outtable", help="file to write the frequencies table to in tsv format")
-    parser.add_argument(
-        "--outfig",
-        help="file to write output heatmap to, default: methylmap_{chr}_{start}_{end}.html (missing paths will be created)",
-    )
     parser.add_argument("--groups", nargs="*", help="list of experimental group for each sample")
     parser.add_argument(
         "-s",
@@ -200,7 +197,7 @@ def meth_browser(app, args):
                 "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
             )
 
-        window = Region(window_input)
+        window = Region(window_input, args.expand)
         if "button-o3" == ctx.triggered_id:
             window = window * 3
         elif "button-o10" == ctx.triggered_id:
@@ -225,17 +222,20 @@ def meth_browser(app, args):
         subplots = plots.create_subplots(num_col, num_row)
 
         # If data is already cached, retrieve it from the store
-        cached_data = process_data(args, window, dendro)
+        window_extra = Region_extra(window_input, args.expand)
+        meth_data_extra = None
+        meth_data_extra = cache.get(window_input)
 
-        if cached_data:
-            meth_data, window = cached_data
+        if meth_data_extra is not None:
+            pass
         else:
-            # Expensive data processing is wrapped in this function, and the result is cached
-            meth_data, window = process_data(args, window, dendro)
-            cache.set((args, window, dendro), (meth_data, window))
+            meth_data_extra = process_data(args, window_extra, dendro)
+            cache.set(window_input, meth_data_extra)
+
+        meth_data = meth_data_extra[meth_data_extra['position'] >= window.begin.fmt & meth_data_extra['position'] <= window.end.fmt]
 
         if dendro:
-            meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
+            meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data)
         meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
         fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
 
@@ -273,14 +273,13 @@ def meth_browser(app, args):
             dendro_xaxis = "xaxis4" if annotation else "xaxis2"
             fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
             fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
-            # plots.create_output_methylmap(fig, outfig, window)
         return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
-
+    
     return html.Div(id="plot")
 
 
 def process_data(args, window, dendro):
-    meth_data, window = read_mods(
+    meth_data = read_mods(
         args.files,
         args.table,
         args.names,
@@ -293,7 +292,7 @@ def process_data(args, window, dendro):
         dendro,
     )
     meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
-    return meth_data, window
+    return meth_data
 
 
 def input_box(app, args):
@@ -308,7 +307,7 @@ def input_box(app, args):
         [State(component_id="input-box", component_property="children")],
     )
     def update_value(button_o3, button_o10, button_i3, button_i10, window):
-        window = Region(window["props"]["value"]) if window else Region(args.window)
+        window = Region(window["props"]["value"]) if window else Region(args.window, args.expand)
         if "button-o3" == ctx.triggered_id:
             window = window * 3
         elif "button-o10" == ctx.triggered_id:

@@ -155,7 +155,7 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                     )
 
-    return methfreqtable, window
+    return methfreqtable
 
 
 def parse_methfrequencytable(table, names, window, groups, gff, dendro):
@@ -177,15 +177,6 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
                 sys.exit(
                     "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
                 )
-            chrom = df.iloc[0, df.columns.get_loc("chrom")]
-            if chrom.startswith("chr"):  # if in format "chr1"
-                chrom = chrom
-            else:  # if in format "1"
-                chrom = "chr" + chrom
-            numberofpositions = len(df) - 1
-            begin = float(df["position"].iat[0])
-            end = float(df["position"].iat[numberofpositions])
-            window = Region(f"{chrom}:{round(begin)}-{round(end)}")
     
     df.drop(["chrom"], axis=1, inplace=True)
     df.set_index("position", inplace=True)
@@ -226,7 +217,7 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
                     f"Error when matching --groups with samples. Is length of the --groups list ({len(groups)}) matching with number of samples in table?"
                 )
 
-    return df, window
+    return df
 
 
 def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
@@ -403,7 +394,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                     )
 
-    return methfreqtable, window
+    return methfreqtable
 
   
 def file_sniffer(filename):
