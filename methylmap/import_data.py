@@ -9,7 +9,6 @@ from pathlib import Path
 from methylmap.region import Region
 
 
-
 def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro):
     """
     Deciding of input file(s) type and processing them.
@@ -76,17 +75,22 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
                 )
                 try:
                     make_tabix = subprocess.Popen(
-                        shlex.split(f"tabix -S1 -s1 -b2 -e3 {file}"), stderr=subprocess.PIPE
+                        shlex.split(f"tabix -S1 -s1 -b2 -e3 {file}"),
+                        stderr=subprocess.PIPE,
                     )
                 except FileNotFoundError as e:
                     logging.error("Error when making a .tbi file.")
                     logging.error(e, exc_info=True)
                     sys.stderr.write("\n\nERROR when making a .tbi file.\n")
                     sys.stderr.write("Is tabix installed and on the PATH?.")
-                    sys.stderr.write(f"\n\n\nDetailed error:\n\n{make_tabix.stderr.read()}\n")
+                    sys.stderr.write(
+                        f"\n\n\nDetailed error:\n\n{make_tabix.stderr.read()}\n"
+                    )
                     raise
                 if make_tabix.returncode:
-                    sys.exit(f"\n\n\nReceived tabix error\n\n{make_tabix.stderr.read()}")
+                    sys.exit(
+                        f"\n\n\nReceived tabix error\n\n{make_tabix.stderr.read()}"
+                    )
 
             try:
                 logging.info(f"Reading {file} using a tabix stream.")
@@ -100,19 +104,28 @@ def parse_nanopolish(files, table, names, window, groups, dendro):
                 logging.error(e, exc_info=True)
                 sys.stderr.write("\n\nERROR when opening a tabix stream.\n")
                 sys.stderr.write("Is tabix installed and on the PATH?")
-                sys.stderr.write(f"\n\n\nDetailed error: {tabix_stream.stderr.read()}\n")
+                sys.stderr.write(
+                    f"\n\n\nDetailed error: {tabix_stream.stderr.read()}\n"
+                )
                 raise
             if tabix_stream.returncode:
                 sys.exit(f"\n\n\nReceived tabix error\n\n{tabix_stream.stderr.read()}")
 
             header = gzip.open(file, "rt").readline().rstrip().split("\t")
-            table = pd.read_csv(tabix_stream.stdout, sep="\t", header=None, names=header)
+            table = pd.read_csv(
+                tabix_stream.stdout, sep="\t", header=None, names=header
+            )
             logging.info("Read the file in a dataframe.")
         else:
             table = pd.read_csv(file, sep="\t")
         logging.info("Read the file in a dataframe.")
         table.drop(
-            ["group_sequence", "called_sites_methylated", "num_motifs_in_group", "called_sites"],
+            [
+                "group_sequence",
+                "called_sites_methylated",
+                "num_motifs_in_group",
+                "called_sites",
+            ],
             axis=1,
             inplace=True,
         )
@@ -176,7 +189,7 @@ def parse_methfrequencytable(table, names, window, groups, gff, dendro):
                 sys.exit(
                     "\n\nError when extracting window out of methfreqtable positions. Chrom column can not contain more than one chromosome \n"
                 )
-    
+
     df.drop(["chrom"], axis=1, inplace=True)
     df.set_index("position", inplace=True)
 
@@ -274,7 +287,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                 sys.stderr.write(
                     "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
                 )
-                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n")
+                sys.stderr.write(
+                    f"\n\n\nDetailed error: {modbam_stream.stderr.read()}\n"
+                )
                 raise
             if modbam_stream.returncode:
                 sys.exit(f"Received modbam2bed error:\n{modbam_stream.stderr.read()}\n")
@@ -286,7 +301,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                 names=headerlist,
                 usecols=["position", "Nmod", "Ncan"],
             )
-            table["methylated_frequency"] = table["Nmod"] / (table["Nmod"] + table["Ncan"])
+            table["methylated_frequency"] = table["Nmod"] / (
+                table["Nmod"] + table["Ncan"]
+            )
             table.drop(["Nmod", "Ncan"], axis=1, inplace=True)
             logging.info("Read the file in a dataframe.")
             table = table.set_index("position")
@@ -321,13 +338,21 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                 sys.stderr.write(
                     "Is modbam2bed (conda install -c epi2melabs modbam2bed) installed and on the PATH?"
                 )
-                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_1.stderr.read()}\n")
-                sys.stderr.write(f"\n\n\nDetailed error: {modbam_stream_2.stderr.read()}\n")
+                sys.stderr.write(
+                    f"\n\n\nDetailed error: {modbam_stream_1.stderr.read()}\n"
+                )
+                sys.stderr.write(
+                    f"\n\n\nDetailed error: {modbam_stream_2.stderr.read()}\n"
+                )
                 raise
             if modbam_stream_1.returncode:
-                sys.exit(f"Received modbam2bed error:\n{modbam_stream_1.stderr.read()}\n")
+                sys.exit(
+                    f"Received modbam2bed error:\n{modbam_stream_1.stderr.read()}\n"
+                )
             if modbam_stream_2.returncode:
-                sys.exit(f"Received modbam2bed error:\n{modbam_stream_2.stderr.read()}\n")
+                sys.exit(
+                    f"Received modbam2bed error:\n{modbam_stream_2.stderr.read()}\n"
+                )
 
             table_1 = pd.read_csv(
                 modbam_stream_1.stdout,
@@ -336,7 +361,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                 names=headerlist,
                 usecols=["position", "Nmod", "Ncan"],
             )
-            table_1["methylated_frequency"] = table_1["Nmod"] / (table_1["Nmod"] + table_1["Ncan"])
+            table_1["methylated_frequency"] = table_1["Nmod"] / (
+                table_1["Nmod"] + table_1["Ncan"]
+            )
             table_1.drop(["Nmod", "Ncan"], axis=1, inplace=True)
             table_1 = table_1.set_index("position")
             table_2 = pd.read_csv(
@@ -346,7 +373,9 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
                 names=headerlist,
                 usecols=["position", "Nmod", "Ncan"],
             )
-            table_2["methylated_frequency"] = table_2["Nmod"] / (table_2["Nmod"] + table_2["Ncan"])
+            table_2["methylated_frequency"] = table_2["Nmod"] / (
+                table_2["Nmod"] + table_2["Ncan"]
+            )
             table_2.drop(["Nmod", "Ncan"], axis=1, inplace=True)
             table_2 = table_2.set_index("position")
             logging.info("Read the file in a dataframe per haplotype.")
@@ -395,7 +424,7 @@ def parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro):
 
     return methfreqtable
 
-  
+
 def file_sniffer(filename):
     """
     Takes in a filename and tries to guess the input file type.
@@ -419,13 +448,21 @@ def file_sniffer(filename):
         return "nanopolish_calc_meth_freq"
     if "path" in header:  # overviewtable
         df = pd.read_table(filename)
-        if df["path"].iloc[0].endswith(".tsv"):  ###only checks first file in overviewtable
+        if (
+            df["path"].iloc[0].endswith(".tsv")
+        ):  ###only checks first file in overviewtable
             return "overviewtable_nanopolishfiles"
-        elif df["path"].iloc[0].endswith(".tsv.gz"):  ###only checks first file in overviewtable
+        elif (
+            df["path"].iloc[0].endswith(".tsv.gz")
+        ):  ###only checks first file in overviewtable
             return "overviewtable_nanopolishfiles"
-        elif df["path"].iloc[0].endswith(".bam"):  ####only checks first file in overviewtable
+        elif (
+            df["path"].iloc[0].endswith(".bam")
+        ):  ####only checks first file in overviewtable
             return "overviewtable_bam"
-        elif df["path"].iloc[0].endswith(".cram"):  ####only checks first file in overviewtable
+        elif (
+            df["path"].iloc[0].endswith(".cram")
+        ):  ####only checks first file in overviewtable
             return "overviewtable_cram"
     if header.startswith("chrom"):
         # own methfrequencytable as input: needs first column header to be "chrom"
