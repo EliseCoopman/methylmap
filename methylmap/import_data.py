@@ -26,26 +26,28 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro
         elif file_type == "methfrequencytable":
             return parse_methfrequencytable(table, names, window, groups, gff, dendro)
         elif file_type in ["cram", "bam"]:
-            rc = subprocess.call(["which", "modbam2bed"])
-            if not rc == 0:
-                sys.exit(
-                    "\n\n\nIs modbam2bed installed? Installation: mamba install -c epi2melabs modbam2bed"
-                )
-            else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
+            check_modbam2bed()
+            return parse_bam(
+                files, table, names, window, groups, fasta, mod, hapl, dendro
+            )
         elif file_type in ["overviewtable_bam", "overviewtable_cram"]:
-            rc = subprocess.call(["which", "modbam2bed"])
-            if not rc == 0:
-                sys.exit(
-                    "\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed"
-                )
-            else:
-                return parse_bam(files, table, names, window, groups, fasta, mod, hapl, dendro)
+            check_modbam2bed()
+            return parse_bam(
+                files, table, names, window, groups, fasta, mod, hapl, dendro
+            )
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
         sys.stderr.write("\n\n\nError processing input file(s)!\n")
         raise
+
+
+def check_modbam2bed():
+    rc = subprocess.call(shlex.split("which modbam2bed"), stdout=subprocess.DEVNULL)
+    if not rc == 0:
+        sys.exit(
+            "\n\n\nIs modbam2bed installed? Instalation: mamba install -c epi2melabs modbam2bed"
+        )
 
 
 def parse_overviewtable(table):
