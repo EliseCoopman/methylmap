@@ -14,10 +14,7 @@ def read_mods(files, table, names, window, groups, gff, fasta, mod, hapl, dendro
     """
     Deciding of input file(s) type and processing them.
     """
-    if files:
-        file_type = file_sniffer(files[0])
-    elif table:
-        file_type = file_sniffer(table)
+    file_type = file_sniffer(table) if table else file_sniffer(files[0])
     try:
         if file_type == "nanopolish_calc_meth_freq":
             return parse_nanopolish(files, table, names, window, groups, dendro)
