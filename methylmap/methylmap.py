@@ -26,7 +26,11 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 cache = Cache(
     app.server,
-    config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory", "CACHE_THRESHOLD": 200},
+    config={
+        "CACHE_TYPE": "filesystem",
+        "CACHE_DIR": "cache-directory",
+        "CACHE_THRESHOLD": 200,
+    },
 )
 
 
@@ -101,16 +105,24 @@ def get_args():
         "--window",
         help="region to visualise, format: chr:start-end (example: chr20:58839718-58911192)",
     )
-    parser.add_argument("-n", "--names", nargs="*", default=[], help="list with sample names")
-    parser.add_argument("--gff", "--gtf", help="add annotation track based on GTF/GFF file")
+    parser.add_argument(
+        "-n", "--names", nargs="*", default=[], help="list with sample names"
+    )
+    parser.add_argument(
+        "--gff", "--gtf", help="add annotation track based on GTF/GFF file"
+    )
     parser.add_argument(
         "--expand",
         help="number of base pairs to expand the window with in both directions",
         type=int,
         default=0,
     )
-    parser.add_argument("--outtable", help="file to write the frequencies table to in tsv format")
-    parser.add_argument("--groups", nargs="*", help="list of experimental group for each sample")
+    parser.add_argument(
+        "--outtable", help="file to write the frequencies table to in tsv format"
+    )
+    parser.add_argument(
+        "--groups", nargs="*", help="list of experimental group for each sample"
+    )
     parser.add_argument(
         "-s",
         "--simplify",
@@ -125,7 +137,18 @@ def get_args():
         "--mod",
         help="modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC",
         default="5mC",
-        choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
+        choices=[
+            "5mC",
+            "5hmC",
+            "5fC",
+            "5caC",
+            "5hmU",
+            "5fU",
+            "5caU",
+            "6mA",
+            "5oxoG",
+            "Xao",
+        ],
     )
     parser.add_argument(
         "--hapl",
@@ -226,13 +249,13 @@ def meth_browser(app, args):
         meth_data_extra = None
         meth_data_extra = cache.get(window_input)
 
-        if meth_data_extra is not None:
-            pass
-        else:
+        if not meth_data_extra:
             meth_data_extra = process_data(args, window_extra, dendro)
             cache.set(window_input, meth_data_extra)
 
-        meth_data = meth_data_extra[meth_data_extra['position'] >= window.begin.fmt & meth_data_extra['position'] <= window.end.fmt]
+        meth_data = meth_data_extra[
+            meth_data_extra["position"].between(window.begin.fmt, window.end.fmt)
+        ]
 
         if dendro:
             meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data)
@@ -246,7 +269,9 @@ def meth_browser(app, args):
             fig.update_xaxes(
                 title_text="", showticklabels=False, zeroline=False, row=num_row, col=1
             )
-            fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
+            fig.update_yaxes(
+                title_text="", showticklabels=True, zeroline=False, row=num_row, col=1
+            )
 
         if dendro:
             for trace in den.select_traces():
@@ -274,7 +299,7 @@ def meth_browser(app, args):
             fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
             fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
         return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
-    
+
     return html.Div(id="plot")
 
 
@@ -307,7 +332,11 @@ def input_box(app, args):
         [State(component_id="input-box", component_property="children")],
     )
     def update_value(button_o3, button_o10, button_i3, button_i10, window):
-        window = Region(window["props"]["value"]) if window else Region(args.window, args.expand)
+        window = (
+            Region(window["props"]["value"])
+            if window
+            else Region(args.window, args.expand)
+        )
         if "button-o3" == ctx.triggered_id:
             window = window * 3
         elif "button-o10" == ctx.triggered_id:
@@ -328,7 +357,9 @@ def validate_input(input_text):
     pattern_without_commas = r"^chr\d+:\d+-\d+$"
 
     # Use the re.match() function to check if the input matches either pattern
-    if re.match(pattern_with_commas, input_text) or re.match(pattern_without_commas, input_text):
+    if re.match(pattern_with_commas, input_text) or re.match(
+        pattern_without_commas, input_text
+    ):
         return True
     else:
         return False
