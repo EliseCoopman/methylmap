@@ -1,21 +1,27 @@
 import methylmap.plots as plots
 import methylmap.annotation as annot
 import methylmap.dendro as dendrogram
+from functools import lru_cache
 from methylmap.import_data import read_mods
 from methylmap.region import Region
 from methylmap.version import __version__
-
+import logging
 from dash import Dash, dcc, html, Input, Output, State, ctx
 
 
 import os
-import sys
 import re
+import sys
 import numpy as np
 from argparse import ArgumentParser
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler()],
+    )
     args = get_args()
     app = Dash(__name__)
     app.layout = html.Div(
@@ -79,7 +85,7 @@ def get_args():
         "-f",
         "--files",
         nargs="+",
-        help="list with nanopolish (processed with calculate_methylation_frequency.py) files or BAM/CRAM files",
+        help="list with BAM/CRAM files or nanopolish (processed with calculate_methylation_frequency.py) files",
     )
     action.add_argument("-t", "--table", help="methfreqtable or overviewtable input")
     parser.add_argument(
@@ -87,20 +93,28 @@ def get_args():
         "--window",
         help="region to visualise, format: chr:start-end (example: chr20:58839718-58911192)",
     )
-    parser.add_argument("-n", "--names", nargs="*", default=[], help="list with sample names")
-    parser.add_argument("--gff", "--gtf", help="add annotation track based on GTF/GFF file")
+    parser.add_argument(
+        "-n", "--names", nargs="*", default=[], help="list with sample names"
+    )
+    parser.add_argument(
+        "--gff", "--gtf", help="add annotation track based on GTF/GFF file"
+    )
     parser.add_argument(
         "--expand",
         help="number of base pairs to expand the window with in both directions",
         type=int,
         default=0,
     )
-    parser.add_argument("--outtable", help="file to write the frequencies table to in tsv format")
+    parser.add_argument(
+        "--outtable", help="file to write the frequencies table to in tsv format"
+    )
     parser.add_argument(
         "--outfig",
         help="file to write output heatmap to, default: methylmap_{chr}_{start}_{end}.html (missing paths will be created)",
     )
-    parser.add_argument("--groups", nargs="*", help="list of experimental group for each sample")
+    parser.add_argument(
+        "--groups", nargs="*", help="list of experimental group for each sample"
+    )
     parser.add_argument(
         "-s",
         "--simplify",
@@ -113,9 +127,9 @@ def get_args():
     )
     parser.add_argument(
         "--mod",
-        help="modified base of interest when BAM/CRAM files as input. Options are: 5mC, 5hmC, 5fC, 5caC, 5hmU, 5fU, 5caU, 6mA, 5oxoG, Xao, default = 5mC",
-        default="5mC",
-        choices=["5mC", "5hmC", "5fC", "5caC", "5hmU", "5fU", "5caU", "6mA", "5oxoG", "Xao"],
+        help="modified base of interest when BAM/CRAM files as input. Options are: m, h, default = m",
+        default="m",
+        choices=["m", "h"],  # methylation  # hydroxymethylation
     )
     parser.add_argument(
         "--hapl",
@@ -146,6 +160,24 @@ def get_args():
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
     return args
+
+
+# @lru_cache(maxsize=None)  # Set maxsize to the desired cache size, or None for unlimited
+# def read_mods_cached(
+#    files, table, names, window, groups, gff, fasta, mod, hapl, dendro
+# ):
+#    return read_mods(
+#        tuple(files),
+#        tuple(table),
+#        tuple(names),
+#        tuple(window),
+#        tuple(groups),
+#        tuple(gff),
+#        tuple(fasta),
+#        tuple(mod),
+#        tuple(hapl),
+#        tuple(dendro),
+#    )
 
 
 def meth_browser(app, args):
@@ -223,7 +255,8 @@ def meth_browser(app, args):
             dendro,
         )
         if dendro:
-            meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data, window)
+            logging.info("Performing hierarchical clustering")
+            meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data)
         meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
         fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
 
@@ -234,7 +267,9 @@ def meth_browser(app, args):
             fig.update_xaxes(
                 title_text="", showticklabels=False, zeroline=False, row=num_row, col=1
             )
-            fig.update_yaxes(title_text="", showticklabels=True, zeroline=False, row=num_row, col=1)
+            fig.update_yaxes(
+                title_text="", showticklabels=True, zeroline=False, row=num_row, col=1
+            )
 
         if dendro:
             for trace in den.select_traces():
@@ -261,7 +296,6 @@ def meth_browser(app, args):
             dendro_xaxis = "xaxis4" if annotation else "xaxis2"
             fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
             fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
-            # plots.create_output_methylmap(fig, outfig, window)
         return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
 
     return html.Div(id="plot")
@@ -300,7 +334,9 @@ def validate_input(input_text):
     pattern_without_commas = r"^chr\d+:\d+-\d+$"
 
     # Use the re.match() function to check if the input matches either pattern
-    if re.match(pattern_with_commas, input_text) or re.match(pattern_without_commas, input_text):
+    if re.match(pattern_with_commas, input_text) or re.match(
+        pattern_without_commas, input_text
+    ):
         return True
     else:
         return False
