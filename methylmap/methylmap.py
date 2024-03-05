@@ -3,7 +3,6 @@ import methylmap.annotation as annot
 import methylmap.dendro as dendrogram
 from methylmap.import_data import read_mods
 from methylmap.region import Region
-from methylmap.region import Region_extra
 from methylmap.version import __version__
 
 from dash import Dash, dcc, html, Input, Output, State, ctx
@@ -79,10 +78,10 @@ def main():
 
     @app.callback(Output("annotation-type", "style"), Input("annotation", "value"))
     def toggle_annotation_type_visibility(annotation):
-        if "annotation" in annotation:
-            return {"display": "block"}  # Show RadioItems when 'Annotation' is checked
-        else:
-            return {"display": "none"}  # Hide RadioItems when 'Annotation' is unchecked
+        """
+        Show RadioItems when 'Annotation' is checked
+        """
+        return {"display": "block"} if "annotation" in annotation else {"display": "none"}
 
     app.run_server(debug=True)
     # app.run()
@@ -233,19 +232,12 @@ def meth_browser(app, args):
         # Convert checklist values to boolean flags
         dendro = "dendro" in hierarchical_clustering
         annotation = "annotation" in annotation
-        if annotation:
-            if annotation_type == "gene":
-                simplify = True
-            if annotation_type == "transcript":
-                simplify = False
 
         num_row = 2 if dendro else 1
         num_col = 2 if annotation else 1  # number of subplots (columns) needed
 
-        subplots = plots.create_subplots(num_col, num_row)
-
         # If data is already cached, retrieve it from the store
-        window_extra = Region_extra(window_input, args.expand)
+        window_extra = Region(window_input, args.expand, extra=1000000)
         meth_data_extra = None
         meth_data_extra = cache.get(window_input)
 
@@ -260,9 +252,10 @@ def meth_browser(app, args):
         if dendro:
             meth_data, den, list_sorted_samples = dendrogram.make_dendro(meth_data)
         meth_data.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
-        fig = plots.plot_methylation(subplots, meth_data, num_col, num_row)
+        fig = plots.plot_methylation(meth_data, num_col, num_row)
 
         if annotation:
+            simplify = True if annotation_type == "gene" else False
             annotation_traces = annot.gff_annotation(args.gff, window, simplify)
             for annot_trace in annotation_traces:
                 fig.append_trace(trace=annot_trace, row=num_row, col=1)
@@ -353,16 +346,10 @@ def input_box(app, args):
 
 def validate_input(input_text):
     # Define a regular expression pattern for the valid formats
-    pattern_with_commas = r"^chr\d+:\d+,\d+,\d+-\d+,\d+,\d+$"
-    pattern_without_commas = r"^chr\d+:\d+-\d+$"
-
+    pattern_commas = r"^chr\d+:\d+,\d+,\d+-\d+,\d+,\d+$"
+    pattern_no_commas = r"^chr\d+:\d+-\d+$"
     # Use the re.match() function to check if the input matches either pattern
-    if re.match(pattern_with_commas, input_text) or re.match(
-        pattern_without_commas, input_text
-    ):
-        return True
-    else:
-        return False
+    return bool(re.match(pattern_commas, input_text) or re.match(pattern_no_commas, input_text))
 
 
 if __name__ == "__main__":

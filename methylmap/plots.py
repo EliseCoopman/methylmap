@@ -50,9 +50,9 @@ def create_subplots(num_col, num_row):
     return fig
 
 
-def plot_methylation(subplots, meth_data, num_col, num_row):
+def plot_methylation(meth_data, num_col, num_row):
     """Make heatmap of modification frequencies."""
-
+    subplots = create_subplots(num_col, num_row)
     samplelist = list(meth_data)
     positionlist = meth_data.index.values.tolist()
     overviewarray = meth_data.to_numpy()
