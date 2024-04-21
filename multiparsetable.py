@@ -8,6 +8,7 @@ import logging
 import itertools
 import tempfile
 import pandas as pd
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from argparse import ArgumentParser
 
@@ -21,14 +22,13 @@ def get_args():
         "-f",
         "--files",
         nargs="+",
-        help="list with BAM/CRAM files or nanopolish (processed with calculate_methylation_frequency.py) files",
+        help="list of CRAM or BAM files",
     )
     parser.add_argument(
         "-w",
         "--window",
         help="region to visualise, format: chr:start-end (example: chr20:58839718-58911192)",
     )
-    parser.add_argument("--outtable", help="File to write the frequencies table to.")
     parser.add_argument(
         "-n", "--names", nargs="*", default=[], help="list with sample names"
     )
@@ -39,7 +39,7 @@ def get_args():
         default=0,
     )
     parser.add_argument(
-        "--outtable", help="file to write the frequencies table to in tsv format"
+        "--output", help="TSV file to write the frequencies to [default: stdout]"
     )
     parser.add_argument(
         "--groups", nargs="*", help="list of experimental group for each sample"
@@ -47,18 +47,26 @@ def get_args():
     parser.add_argument(
         "--fasta",
         help="fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files",
+        required=True,
     )
     parser.add_argument(
         "--mod",
         help="modified base of interest when BAM/CRAM files as input. Options are: m, h, default = m",
         default="m",
-        choices=["m", "h"],  # methylation  # hydroxymethylation
+        choices=["m", "h"],  # methylation or hydroxymethylation
     )
     parser.add_argument(
         "--hapl",
         action="store_true",
         help="display modification frequencies in input BAM/CRAM file for each haplotype (alternating haplotypes in methylmap)",
     )
+    parser.add_argument(
+        "--threads",
+        help="number of threads to use when processing BAM/CRAM files",
+        type=int,
+        default=12,
+    )
+    parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     args = parser.parse_args()
     if args.files:
         if len(args.names) == 0:
@@ -75,35 +83,15 @@ def get_args():
 
 def main():
     args = get_args()
-    overviewtable = read_mods(
-        args.files,
-        args.names,
-        args.window,
-        args.groups,
-        args.fasta,
-        args.mod,
-        args.hapl,
-        args.expand,
-    )
-    overviewtable.to_csv(args.outtable, sep="\t", na_rep=np.NaN, header=True)
-
-
-def read_mods(files, names, window, groups, fasta, mod, hapl, expand=False):
-    window = Region(window, expand)
-    """
-    Deciding of input file(s) type and processing them.
-    """
-    if files:
-        file_type = file_sniffer(files[0])
+    window = Region(args.window, args.expand)
+    file_sniffer(args.files[0])
+    check_modkit()
     try:
-        if file_type in ["cram", "bam"]:
-            rc = subprocess.call(["which", "modkit"])
-            if not rc == 0:
-                sys.exit(
-                    "\n\n\nIs modkit installed? Installation: see https://github.com/nanoporetech/modkit"
-                )
-            else:
-                return parse_bam(files, names, window, groups, fasta, mod, hapl)
+        overviewtable = parse_bam(args, window)
+        if args.output:
+            overviewtable.to_csv(args.output, sep="\t", na_rep=np.NaN, header=True)
+        else:
+            print(overviewtable.to_csv(sep="\t", na_rep=np.NaN, header=True))
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -111,37 +99,36 @@ def read_mods(files, names, window, groups, fasta, mod, hapl, expand=False):
         raise
 
 
-def parse_bam(files, names, window, groups, fasta, mod, hapl):
-    if not fasta:
-        logging.info("Stop script when no --fasta input")
-        sys.exit(
-            "ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
-        )
-    with ThreadPoolExecutor(max_workers=12) as executor:
-        args_list = [
-            (file, name, fasta, mod, window, hapl) for file, name in zip(files, names)
-        ]
+def check_modkit():
+    rc = subprocess.call(["which", "modkit"], stdout=subprocess.DEVNULL)
+    if rc != 0:
+        sys.exit("\n\nIs modkit installed? See github.com/nanoporetech/modkit")
 
-        # Process files concurrently with a maximum of 12 threads
-        results = list(executor.map(process_single_file, args_list))
+
+def parse_bam(args, window):
+    args_list = [
+        (file, name, args, window) for file, name in zip(args.files, args.names)
+    ]
+    # Process files concurrently with a maximum of 12 threads
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        results = list(
+            tqdm(executor.map(process_single_file, args_list), total=len(args_list))
+        )
 
     dfs = list(itertools.chain(*results))
 
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
     if len(methfrequencytable) == 0:
-        logging.error(
-            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
-        )
-        sys.exit(
-            "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
-        )
+        err = "WARNING: length of methylation frequency table is zero. Do the input files contain data?"
+        logging.error(err)
+        sys.exit(err)
 
     methfreqtable = methfrequencytable.sort_values("position", ascending=True)
 
-    if groups:
+    if args.groups:
         logging.info("Sort columns of methfrequencytable based on group")
-        if hapl:
+        if args.hapl:
             groupshapl = list(itertools.chain(*zip(groups, groups)))
             groups = groupshapl
         headerlist = list(methfreqtable.columns.values)
@@ -158,14 +145,66 @@ def parse_bam(files, names, window, groups, fasta, mod, hapl):
     return methfreqtable
 
 
-def process_single_file(args):
-    file, name, fasta, mod, window, hapl = args
-    dfs = []
-    dfs_1 = []
-    dfs_2 = []
+def process_single_file(function_args):
+    input, name, args, window = function_args
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        file_basename = os.path.basename(input)
+        logging.info("Extract mod frequencies in bam/cram using modkit")
+        # when processing haplotypes, <output> is a directory
+        output = (
+            temp_dir if args.hapl else os.path.join(temp_dir, f"{file_basename}.bed")
+        )
+
+        stderr = run_modkit_pileup(
+            input=input,
+            output=output,
+            ignore="m" if args.mod == "h" else "h",
+            window=window,
+            fasta=args.fasta,
+            log_file=os.path.join(temp_dir, "modkit.log"),
+            haplotype=args.hapl,
+        )
+        if not args.quiet:
+            tqdm.write(stderr, file=sys.stderr)
+        logging.info("Read the file in a dataframe per haplotype.")
+        if args.hapl:
+            return [
+                process_modkit_tsv(
+                    f"{output}/H_{haplotype}.bed", name=f"{name}_{haplotype}"
+                )
+                for haplotype in [1, 2]
+            ]
+        else:
+            return [process_modkit_tsv(output, name=name)]
+
+
+def run_modkit_pileup(input, output, ignore, window, fasta, log_file, haplotype=False):
+    cmd = f"modkit pileup {input} {output} --ignore {ignore} --region={window.fmt} --cpg --ref={fasta} --log-filepath {log_file} --only-tabs"
+    if haplotype:
+        cmd += " --partition-tag HP --prefix H"
+    try:
+        modkit = subprocess.Popen(
+            shlex.split(cmd),
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        stderr = modkit.stderr.read()
+    except Exception as e:
+        logging.error(e, exc_info=True)
+        sys.stderr.write("\n\nError parsing bam/cram file with modkit.\n")
+        sys.stderr.write(f"\n\n\nDetailed error: {modkit.stderr.read()}\n")
+        raise
+    if modkit.returncode:
+        sys.exit(f"Received modkit error:\n{modkit.stderr.read()}\n")
+    return stderr
+
+
+def process_modkit_tsv(filename, name):
     headerlist = [
         "chrom",
-        "startposition",
+        "position",
         "endposition",
         "modified_base_code",
         "score",
@@ -184,165 +223,18 @@ def process_single_file(args):
         "Nnocall",
     ]
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        file_basename = os.path.basename(file)
-        file_temp_path_hapl = f"{temp_dir}/{file_basename}"
-        file_temp_path_nohapl = f"{temp_dir}/{file_basename}/{file_basename}.bed"
-        log_temp_path = f"{temp_dir}/{file_basename}/logging.log"
+    logging.info("Read the modkit file in a dataframe.")
+    df = pd.read_table(
+        filename,
+        sep="\t",
+        header=None,
+        names=headerlist,
+        usecols=["chrom", "position", "fractionmodified"],
+    )
 
-        if hapl:
-            if mod == "m":
-                try:
-                    logging.info(
-                        "Extract modification frequencies from haplotype 1 in bam/cram files using modkit tool"
-                    )
-                    modkit_stream = subprocess.Popen(
-                        shlex.split(
-                            f"modkit pilup {file} {file_temp_path_hapl} --ignore h --region={window.fmt} --cpg --ref={fasta} --log-filepath {log_temp_path} --partition-tag HP --prefix H --only-tabs"
-                        ),
-                        stderr=subprocess.PIPE,
-                    )
-                    logging.info(
-                        "Extract modification frequencies haplotypes in bam/cram files using modkit tool"
-                    )
-                except FileNotFoundError as e:
-                    logging.error(e, exc_info=True)
-                    sys.stderr.write(
-                        "\n\nError when making bedfile of bam/cram file with modkit.\n"
-                    )
-                    sys.stderr.write("Is modkit installed and on the PATH?")
-                    sys.stderr.write(
-                        f"\n\n\nDetailed error: {modkit_stream.stderr.read()}\n"
-                    )
-                    raise
-                if modkit_stream.returncode:
-                    sys.exit(f"Received modkit error:\n{modkit_stream.stderr.read()}\n")
-            if mod == "h":
-                try:
-                    logging.info(
-                        "Extract modification frequencies from haplotype 1 in bam/cram files using modkit tool"
-                    )
-                    modkit_stream = subprocess.Popen(
-                        shlex.split(
-                            f"modkit pilup {file} {file_temp_path_hapl} --ignore m --region={window.fmt} --cpg --ref={fasta} --log-filepath {log_temp_path} --partition-tag HP --prefix H --only-tabs"
-                        ),
-                        stderr=subprocess.PIPE,
-                    )
-                    logging.info(
-                        "Extract modification frequencies haplotypes in bam/cram files using modkit tool"
-                    )
-                except FileNotFoundError as e:
-                    logging.error(e, exc_info=True)
-                    sys.stderr.write(
-                        "\n\nError when making bedfile of bam/cram file with modkit.\n"
-                    )
-                    sys.stderr.write("Is modkit installed and on the PATH?")
-                    sys.stderr.write(
-                        f"\n\n\nDetailed error: {modkit_stream.stderr.read()}\n"
-                    )
-                    raise
-                if modkit_stream.returncode:
-                    sys.exit(f"Received modkit error:\n{modkit_stream.stderr.read()}\n")
-
-            logging.info("Read the file in a dataframe per haplotype.")
-
-            df_H1 = pd.read_table(
-                f"{file_temp_path_hapl}/H_1.bed",
-                sep="\t",
-                header=None,
-                names=headerlist,
-                usecols=["startposition", "endposition", "fractionmodified"],
-            )
-
-            df_H2 = pd.read_table(
-                f"{file_temp_path_hapl}/H_2.bed",
-                sep="\t",
-                header=None,
-                names=headerlist,
-                usecols=["startposition", "endposition", "fractionmodified"],
-            )
-
-            df_H1["position"] = (df_H1["startposition"] + df_H1["endposition"]) / 2
-            df_H1 = df_H1.set_index("position").drop(
-                ["startposition", "endposition"], axis=1, inplace=True
-            )
-
-            df_H2["position"] = (df_H2["startposition"] + df_H2["endposition"]) / 2
-            df_H2 = df_H2.set_index("position").drop(
-                ["startposition", "endposition"], axis=1, inplace=True
-            )
-
-            dfs_1.append(df_H1.rename(columns={"methylated_frequency": f"{name}_1"}))
-            dfs_2.append(df_H2.rename(columns={"methylated_frequency": f"{name}_2"}))
-
-            import itertools
-
-            dfs = list(itertools.chain(*zip(dfs_1, dfs_2)))
-            return dfs
-
-        if not hapl:
-            if mod == "m":
-                try:
-                    logging.info(
-                        "Extract modification frequencies from bam/cram files using modkit tool"
-                    )
-                    modkit_stream = subprocess.Popen(
-                        shlex.split(
-                            f"modkit pilup {file} {file_temp_path_nohapl} --ignore h --region={window.fmt} --cpg --ref={fasta} --log-filepath {log_temp_path} --only-tabs"
-                        ),
-                        stderr=subprocess.PIPE,
-                    )
-                except FileNotFoundError as e:
-                    logging.error(e, exc_info=True)
-                    sys.stderr.write(
-                        "\n\nError when making bedfile of bam/cram file with modkit.\n"
-                    )
-                    sys.stderr.write("Is modkit installed and on the PATH?")
-                    sys.stderr.write(
-                        f"\n\n\nDetailed error: {modkit_stream.stderr.read()}\n"
-                    )
-                    raise
-                if modkit_stream.returncode:
-                    sys.exit(f"Received modkit error:\n{modkit_stream.stderr.read()}\n")
-            if mod == "h":
-                try:
-                    logging.info(
-                        "Extract modification frequencies from bam/cram files using modkit tool"
-                    )
-                    modkit_stream = subprocess.Popen(
-                        shlex.split(
-                            f"modkit pilup {file} {file_temp_path_nohapl} --ignore m --region={window.fmt} --cpg --ref={fasta} --log-filepath {log_temp_path} --only-tabs"
-                        ),
-                        stderr=subprocess.PIPE,
-                    )
-                except FileNotFoundError as e:
-                    logging.error(e, exc_info=True)
-                    sys.stderr.write(
-                        "\n\nError when making bedfile of bam/cram file with modkit.\n"
-                    )
-                    sys.stderr.write("Is modkit installed and on the PATH?")
-                    sys.stderr.write(
-                        f"\n\n\nDetailed error: {modkit_stream.stderr.read()}\n"
-                    )
-                    raise
-                if modkit_stream.returncode:
-                    sys.exit(f"Received modkit error:\n{modkit_stream.stderr.read()}\n")
-
-                logging.info("Read the file in a dataframe.")
-            df = pd.read_table(
-                file_temp_path_nohapl,
-                sep="\t",
-                header=None,
-                names=headerlist,
-                usecols=["startposition", "endposition", "fractionmodified"],
-            )
-            df["position"] = (df["startposition"] + df["endposition"]) / 2
-            df = df.set_index("position").drop(
-                ["startposition", "endposition"], axis=1, inplace=True
-            )
-
-            dfs.append(df.rename(columns={"methylated_frequency": name}))
-            return dfs
+    return df.set_index(["chrom", "position"]).rename(
+        columns={"fractionmodified": name}
+    )
 
 
 def file_sniffer(filename):
@@ -351,12 +243,8 @@ def file_sniffer(filename):
     """
     if not Path(filename).is_file():
         sys.exit(f"\n\nERROR: File {filename} does not exist, please check the path!\n")
-    if is_bam_file(filename):  # input BAM
-        return "bam"
-    if is_cram_file(filename):  # input CRAM
-        return "cram"
-    else:
-        sys.exit(f"\n\n\nInput file {filename} not recognized!\n")
+    if not (is_bam_file(filename) or is_cram_file(filename)):
+        sys.exit(f"\n\n\nInput file type {filename} not recognized!\n")
 
 
 def is_cram_file(filepath):
