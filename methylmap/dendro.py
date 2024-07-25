@@ -16,10 +16,10 @@ def make_dendro(methfreqtable):
     number_of_nan_values_interpolate = methfreqtable.isna().sum().sum()
     if number_of_nan_values_interpolate != 0:
         logging.warning(
-            f"\n\n{number_of_nan_values_interpolate} NaN values found in data after using numpy interpolate for estimation of these values. Rows with minimal 1 NaN value will be deleted to perform hierarchical clustering.\n\n"
+            f"\n\n{number_of_nan_values_interpolate} NaN values found in data after using numpy interpolate for estimation of these values. Positions with minimal 1 NaN value will be deleted to perform hierarchical clustering.\n\n"
         )
         sys.stderr.write(
-            f"\n\n{number_of_nan_values_interpolate} NaN values found in data after using numpy interpolate for estimation of these values. Rows with minimal 1 NaN value will be deleted to perform hierarchical clustering.\n\n"
+            f"\n\n{number_of_nan_values_interpolate} NaN values found in data after using numpy interpolate for estimation of these values. Positions with minimal 1 NaN value will be deleted to perform hierarchical clustering.\n\n"
         )
     methfreqtable.dropna(inplace=True)
 
@@ -29,9 +29,8 @@ def make_dendro(methfreqtable):
 
     den = ff.create_dendrogram(methfreqtable_transposed, labels=samples)
 
-
     list_sorted_samples = den.layout.xaxis.ticktext.tolist()
-    
+
     methfreqtable = methfreqtable.reindex(columns=list_sorted_samples)
 
     return methfreqtable, den, list_sorted_samples
