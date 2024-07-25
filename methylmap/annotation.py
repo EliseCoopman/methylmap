@@ -4,6 +4,7 @@ import shlex
 import sys
 import pandas as pd
 from pathlib import Path
+from methylmap.region import Region
 import subprocess
 from plotly.colors import DEFAULT_PLOTLY_COLORS as plcolors
 import plotly.graph_objects as go
@@ -15,7 +16,9 @@ class Transcript(object):
         self.gene = gene
         self.exon_tuples = list(exon_tuples)
         self.strand = strand
-        self.marker = "triangle-down" if self.strand == "+" else "triangle-up"  # reversed
+        self.marker = (
+            "triangle-down" if self.strand == "+" else "triangle-up"
+        )  # reversed
         self.begin = min(list(itertools.chain.from_iterable(self.exon_tuples)))
         self.end = max(list(itertools.chain.from_iterable(self.exon_tuples)))
         self.color = ""
@@ -27,7 +30,9 @@ def annot_file_type(annot_file):
     """
     if annot_file.endswith((".gtf", ".gtf.gz")):
         return "gtf"
-    elif annot_file.endswith((".gff", ".gff.gz", ".gff2", ".gff2.gz", ".gff3", ".gff3.gz")):
+    elif annot_file.endswith(
+        (".gff", ".gff.gz", ".gff2", ".gff2.gz", ".gff3", ".gff3.gz")
+    ):
         return "gff"
     else:
         sys.exit(
@@ -42,7 +47,8 @@ def transcripts_in_window(df, window, feature="transcript"):
     either the end or the begin of an exon is within the window
     """
     return df.loc[
-        df["begin"].between(window.begin, window.end) | df["end"].between(window.begin, window.end),
+        df["begin"].between(window.begin, window.end)
+        | df["end"].between(window.begin, window.end),
         feature,
     ].unique()
 
@@ -62,8 +68,12 @@ def parse_annotation(gff, window):
     logging.info(f"Parsing {type} file...")
     if not Path(gff + ".tbi").is_file():
         try:
-            logging.info("Make .tbi file from annotion file for fast selection window of interest.")
-            tabix_gff = subprocess.Popen(shlex.split(f"tabix -p gff {gff}"), stderr=subprocess.PIPE)
+            logging.info(
+                "Make .tbi file from annotion file for fast selection window of interest."
+            )
+            tabix_gff = subprocess.Popen(
+                shlex.split(f"tabix -p gff {gff}"), stderr=subprocess.PIPE
+            )
         except FileNotFoundError as e:
             logging.error("Error when making a .tbi file.")
             logging.error(e, exc_info=True)
@@ -75,7 +85,9 @@ def parse_annotation(gff, window):
             sys.exit(f"\n\n\nReceived tabix error:\n{tabix_gff.stderr.read()}\n")
     try:
         logging.info(f"Reading {gff} using a tabix stream.")
-        tabix_stream = subprocess.Popen(["tabix", gff,  window.fmt], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        tabix_stream = subprocess.Popen(
+            ["tabix", gff, window.fmt], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     except FileNotFoundError as e:
         logging.error("Error when opening a tabix stream.")
         logging.error(e, exc_info=True)
@@ -128,7 +140,9 @@ def annotation_transcripts(gff, window, simplify):
     )
 
     if simplify:
-        annotationfile.drop_duplicates(subset=["chromosome", "begin", "end", "gene"], inplace=True)
+        annotationfile.drop_duplicates(
+            subset=["chromosome", "begin", "end", "gene"], inplace=True
+        )
         res = []
         for g in transcripts_in_window(annotationfile, window, feature="gene"):
             gtable = annotationfile.loc[annotationfile["gene"] == g]
