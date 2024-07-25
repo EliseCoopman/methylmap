@@ -2,7 +2,7 @@ import sys
 
 
 class Region(object):
-    def __init__(self, region=None, expand=False, tup=None):
+    def __init__(self, region=None, tup=None):
         if tup:
             self.chromosome, self.begin, self.end = tup
         else:
@@ -19,9 +19,6 @@ class Region(object):
                     "\n\nERROR: Window (-w/--window) inproperly formatted, "
                     "an example of accepted formats is:\n'chr5:150200605-150423790'\n\n"
                 )
-        if expand:
-            self.begin = self.begin - int(expand)
-            self.end = self.end + int(expand)
         self.start = self.begin  # start as alias for begin
         self.size = self.end - self.begin
         if self.size < 0:
