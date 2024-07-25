@@ -44,8 +44,7 @@ def create_subplots(num_col, num_row):
         {
             "plot_bgcolor": "rgba(0,0,0,0)",
             "paper_bgcolor": "rgba(0,0,0,0)",
-        },
-        title="Nucleotide modification frequencies",
+        }
     )
     return fig
 
