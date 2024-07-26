@@ -139,7 +139,7 @@ def main():
                                                         html.P(
                                                             [
                                                                 "Welcome to the web application of methylmap, a tool for visualizing nucleotide modification frequencies of large cohort sizes. "
-                                                                "visualization of haplotype specific methylation frequencies from ONT samples of the 1000Genomes project can be consulted at the 'ONT 1000Genomes' tab. "
+                                                                "In addition to the visualization of your own modification data, methylmap also provides the possibility to visualize the haplotype specific methylation frequencies of the ONT 1000Genomes dataset. "
                                                                 "If this tool is useful for your research, please cite the following paper: ",
                                                                 html.A(
                                                                     "Coopman et al.",
@@ -166,8 +166,13 @@ def main():
                                                                     href="https://s3.amazonaws.com/1000g-ont/index.html?prefix=ALIGNMENT_AND_ASSEMBLY_DATA/FIRST_100/IN-HOUSE_MINIMAP2/HG38/",
                                                                     target="_blank",
                                                                 ),
-                                                                ", selected for only having 5mC callling, and further processed according to the pipeline available at the methylmap Github page. "
-                                                                "In total, 76 samples were processed, resulting in visualization of 152 haplotypes.",
+                                                                ", selected for only having 5mC callling, and further processed according to the pipeline ",
+                                                                html.A(
+                                                                    "the pipeline",
+                                                                    href="https://github.com/EliseCoopman/methylmap/blob/main/1000Genomes/1000Genomes_snakemake.smk",
+                                                                ),
+                                                                " available at the methylmap Github page. ",
+                                                                "In total, 76 samples were processed, resulting in visualization of 152 haplotypes that can be consulted in the 'ONT 1000Genomes' tab.",
                                                             ],
                                                             style={
                                                                 "textAlign": "justify"
@@ -175,17 +180,17 @@ def main():
                                                         ),
                                                         html.P(
                                                             [
-                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table. "
-                                                                "Starting from bam or cram files, such a table can be generated using the ",
+                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv or .tsv.gz file. "
+                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genmic region of interest can be generated using the ",
                                                                 html.A(
                                                                     "multiparsetable.py script",
                                                                     href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
                                                                     target="_blank",
                                                                 ),
-                                                                " available at the methylmap Github page. "
-                                                                "More information can be found at ",
+                                                                " available at the methylmap Github page. This script also supports the generation of a modification frequency table from Nanopolish input files. "
+                                                                "More information about the expected formating for the modification frequency table can be found at ",
                                                                 html.A(
-                                                                    "my github github page",
+                                                                    "the methylmap github page",
                                                                     href="https://github.com/EliseCoopman/methylmap",
                                                                     target="_blank",
                                                                 ),
@@ -404,17 +409,49 @@ def main():
                                 id="upload-data",
                                 children=html.Div(
                                     [
-                                        "Drag and drop your .tsv or .tsv.gz table",
-                                    ]
+                                        html.P(
+                                            [
+                                                "Drag and drop your .tsv or .tsv.gz modification frequency table. "
+                                            ],
+                                            style={
+                                                "textAlign": "center",
+                                                "fontWeight": "bold",
+                                                "textSize": "10px",
+                                            },
+                                        ),
+                                        html.P(
+                                            [
+                                                "Starting from bam or cram files with MM/ML tags or Nanopolish files, such a table can be generated using the ",
+                                                html.A(
+                                                    "multiparsetable.py script",
+                                                    href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
+                                                ),
+                                                " available at the methylmap Github page. ",
+                                                "This table should contain the modification frequencies for your genomic region of interest and is expected to have the following columns: chrom, position, samplename1, samplename2, ... .",
+                                                " Not more than one unique chromosome is allowed in the table. For more information, please consult the ",
+                                                html.A(
+                                                    "methylmap Github page",
+                                                    href="https://github.com/EliseCoopman/methylmap",
+                                                ),
+                                                ".",
+                                            ],
+                                            style={
+                                                "textAlign": "justify",
+                                                "textSize": "3px",
+                                                "fontStyle": "italic",
+                                                "margin": "10px",
+                                            },
+                                        ),
+                                    ],
                                 ),
                                 style={
                                     "width": "100%",
-                                    "height": "60px",
+                                    "height": "100px",
                                     "lineHeight": "60px",
                                     "borderWidth": "1px",
                                     "borderStyle": "dashed",
                                     "borderRadius": "5px",
-                                    "textAlign": "center",
+                                    "line-height": "20px",
                                     "margin": "10px",
                                 },
                                 multiple=False,
@@ -445,6 +482,12 @@ def main():
                                                         "align-items": "center",
                                                     },
                                                 )
+                                            ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="error-message-uploadowndata",
+                                                    style={"color": "red"},
+                                                ),
                                             ),
                                         ],
                                     ),
@@ -583,10 +626,6 @@ def main():
                             ),
                             html.Div(
                                 id="error-message",
-                                style={"color": "red"},
-                            ),
-                            html.Div(
-                                id="error-message-uploadowndata",
                                 style={"color": "red"},
                             ),
                             meth_browser(app, args, gff),
@@ -899,7 +938,10 @@ def dcc_store(app, args):
     @app.callback(
         [
             Output(component_id="intermediate-data", component_property="data"),
-            Output(component_id="error-message-uploadowndata", component_property="children"),
+            Output(
+                component_id="error-message-uploadowndata",
+                component_property="children",
+            ),
         ],
         [
             Input(component_id="confirm-button", component_property="n_clicks"),
@@ -936,14 +978,14 @@ def dcc_store(app, args):
         if input_box["props"]["value"] is None and upload_data is not None:
             return None, "please enter a genomic region"
         window = window_input(
-                confirm_button,
-                button_o3,
-                button_o10,
-                button_i3,
-                button_i10,
-                input_box,
-                args.window,
-            )
+            confirm_button,
+            button_o3,
+            button_o10,
+            button_i3,
+            button_i10,
+            input_box,
+            args.window,
+        )
         window_region = Region(window)
         if upload_data is None:
             mod_data = mod_freq_data(args, window_region)
@@ -1059,7 +1101,7 @@ def browser_information(
     return window, dendro, annotation, simplify, num_row, num_col, subplots
 
 
-def meth_browser(app, args, gff):
+def meth_browser(app, args, gff_file):
     @app.callback(
         [
             Output(component_id="plot", component_property="children"),
@@ -1116,7 +1158,7 @@ def meth_browser(app, args, gff):
             if args.gff:
                 gff = args.gff
             else:
-                gff = gff
+                gff = gff_file
             fig = process_fig(
                 mod_data,
                 dendro,
@@ -1175,8 +1217,12 @@ def validate_input(input_text):
 
 
 def input_box(app, args):
+
     @app.callback(
-        Output(component_id="input-box", component_property="children"),
+        Output(
+            component_id="input-box",
+            component_property="children",
+        ),
         [
             Input(component_id="button-o3", component_property="n_clicks"),
             Input(component_id="button-o10", component_property="n_clicks"),
