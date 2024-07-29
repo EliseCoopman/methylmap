@@ -11,6 +11,7 @@ import re
 import sys
 import json
 import logging
+import gzip
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
@@ -32,6 +33,7 @@ def main():
     args = get_args()
     db = args.db
     gff = args.gff
+    genes_to_coords = make_gene_to_coords_dict(gff)
 
     button_style = {
         "height": "30px",
@@ -388,8 +390,8 @@ def main():
                             html.Div(
                                 id="error-message_1000Genomes", style={"color": "red"}
                             ),
-                            Genome_browser(app, gff),
-                            dcc_store_genome_browser(app, db),
+                            Genome_browser(app, gff, genes_to_coords),
+                            dcc_store_genome_browser(app, db, genes_to_coords),
                         ],
                     ),
                     dcc.Tab(
@@ -629,7 +631,7 @@ def main():
                                 style={"color": "red"},
                             ),
                             meth_browser(app, args, gff),
-                            dcc_store(app, args),
+                            dcc_store(app, args, genes_to_coords),
                         ],
                     ),
                 ]
@@ -760,7 +762,7 @@ def get_args():
     return args
 
 
-def Genome_browser(app, gff):
+def Genome_browser(app, gff, genes_to_coords):
     gnas = "chr20:58839718-58911192"
 
     @app.callback(
@@ -818,6 +820,7 @@ def Genome_browser(app, gff):
                 annotation_1000Genomes,
                 annotation_type_1000Genomes,
                 gnas,
+                genes_to_coords,
             )
         )
 
@@ -883,7 +886,7 @@ def input_box_genomebrowser(app):
     )
 
 
-def dcc_store_genome_browser(app, db):
+def dcc_store_genome_browser(app, db, genes_to_coords):
     gnas = "chr20:58839718-58911192"
 
     @app.callback(
@@ -917,6 +920,7 @@ def dcc_store_genome_browser(app, db):
             button_i10_1000Genomes,
             input_box_1000Genomes,
             gnas,
+            genes_to_coords,
         )
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
@@ -933,7 +937,7 @@ def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=N
     return read_mods(args, window, upload_data, filename, last_modified)
 
 
-def dcc_store(app, args):
+def dcc_store(app, args, genes_to_coords):
 
     @app.callback(
         [
@@ -985,6 +989,7 @@ def dcc_store(app, args):
             button_i10,
             input_box,
             args.window,
+            genes_to_coords,
         )
         window_region = Region(window)
         if upload_data is None:
@@ -1070,6 +1075,7 @@ def browser_information(
     annotation,
     annotation_type,
     windowregion,
+    genes_to_coords,
 ):
     # Validate the input format
 
@@ -1081,6 +1087,7 @@ def browser_information(
         button_i10,
         window,
         windowregion,
+        genes_to_coords,
     )
 
     # Convert checklist values to boolean flags
@@ -1177,17 +1184,29 @@ def meth_browser(app, args, gff_file):
 
 
 def window_input(
-    confirm_button, button_o3, button_o10, button_i3, button_i10, input_box, window
+    confirm_button,
+    button_o3,
+    button_o10,
+    button_i3,
+    button_i10,
+    input_box,
+    window,
+    genes_to_coords,
 ):
     if input_box["props"]["value"] is None and window is None:
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
         if not validate_input(window_input):
-            return (
-                None,
-                "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-            )
+            # if the input is not in the correct format to be coordinates, check if it is a gene name
+            coords = genes_to_coords.get(window_input)
+            if not coords:
+                return (
+                    None,
+                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
+            else:
+                window_input = coords
         window = Region(window_input)
         if "button-o3" == ctx.triggered_id:
             window = window * 3
@@ -1214,6 +1233,20 @@ def validate_input(input_text):
         return True
     else:
         return False
+
+
+def make_gene_to_coords_dict(gff_file):
+    genes_to_coords = {}
+    for line in gzip.open(gff_file, "rt"):
+        if line.startswith("#"):
+            continue
+        fields = line.rstrip().split("\t")
+        if fields[2] == "gene":
+            name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
+                0
+            ].split("=")[1]
+            genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
+    return genes_to_coords
 
 
 def input_box(app, args):
