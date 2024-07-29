@@ -29,7 +29,7 @@ chr1	100003.0	0.000	0.000	0.000	0.000
 Such a table can be generated using the multiparsetable.py script, that supports the following input possibilities:
 - BAM/CRAM files with MM and ML tags. 
 
-- files from nanopolish (as processed by calculate_methylation_frequency.py). The methylation calls can additionally be phased using the available scripts in the "scripts" folder. Use --files input option.
+- files from nanopolish (as processed by calculate_methylation_frequency.py). The methylation calls can additionally be phased using the available scripts in the "scripts" folder.
 
 
 ### MORE INFORMATION
