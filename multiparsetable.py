@@ -1,5 +1,6 @@
 import os
 import sys
+import gzip
 import shlex
 from pathlib import Path
 import subprocess
@@ -84,10 +85,15 @@ def get_args():
 def main():
     args = get_args()
     window = Region(args.window, args.expand)
-    file_sniffer(args.files[0])
-    check_modkit()
+    file_type = file_sniffer(args.files[0])
+    print(f"file_typeeeeeeeeeeeeeeeeeeeeeee: {file_type}")
     try:
-        overviewtable = parse_bam(args, window)
+        if file_type == "nanopolish_calc_meth_freq":
+            overviewtable = parse_nanopolish(args, window)
+        elif file_type in ["cram", "bam"]:
+            check_modkit()
+            rc = subprocess.call(["which", "modkit"])
+            overviewtable = parse_bam(args, window)
         if args.output:
             overviewtable.to_csv(args.output, sep="\t", na_rep=np.NaN, header=True)
         else:
@@ -116,6 +122,7 @@ def parse_bam(args, window):
         )
 
     dfs = list(itertools.chain(*results))
+    print(dfs)
 
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
@@ -124,25 +131,23 @@ def parse_bam(args, window):
         logging.error(err)
         sys.exit(err)
 
-    methfreqtable = methfrequencytable.sort_values("position", ascending=True)
-
     if args.groups:
         logging.info("Sort columns of methfrequencytable based on group")
         if args.hapl:
             groupshapl = list(itertools.chain(*zip(groups, groups)))
             groups = groupshapl
-        headerlist = list(methfreqtable.columns.values)
+        headerlist = list(methfrequencytable.columns.values)
         if len(headerlist) == len(groups):
             res = zip(headerlist, groups)
             output = sorted(list(res), key=lambda x: x[1])
             orderedlist = [i[0] for i in output]
-            methfreqtable = methfreqtable.reindex(columns=orderedlist)
+            methfrequencytable = methfrequencytable.reindex(columns=orderedlist)
         else:
             sys.exit(
                 f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
             )
 
-    return methfreqtable
+    return methfrequencytable
 
 
 def process_single_file(function_args):
@@ -237,14 +242,142 @@ def process_modkit_tsv(filename, name):
     )
 
 
+def parse_nanopolish(args, window):
+    """
+    Converts a file from nanopolish to a pandas dataframe
+    input can be from calculate_methylation_frequency.py or overviewtable with these files
+    which will return a dataframe with 'chromosome', 'pos', 'methylated_frequency'.
+    """
+    dfs = []
+    for file, name in zip(args.files, args.names):
+        if window:
+            if not Path(file + ".tbi").is_file():
+                logging.info(
+                    "Make tabix file of input files for fast selection of window of interest"
+                )
+                try:
+                    make_tabix = subprocess.Popen(
+                        shlex.split(f"tabix -S1 -s1 -b2 -e3 {file}"),
+                        stderr=subprocess.PIPE,
+                    )
+                except FileNotFoundError as e:
+                    logging.error("Error when making a .tbi file.")
+                    logging.error(e, exc_info=True)
+                    sys.stderr.write("\n\nERROR when making a .tbi file.\n")
+                    sys.stderr.write("Is tabix installed and on the PATH?\n.")
+                    sys.stderr.write(
+                        f"\n\n\nDetailed error:\n\n{make_tabix.stderr.read()}\n"
+                    )
+                    raise
+                if make_tabix.returncode:
+                    sys.exit(
+                        f"\n\n\nReceived tabix error\n\n{make_tabix.stderr.read()}"
+                    )
+
+            try:
+                logging.info(f"Reading {file} using a tabix stream.")
+                tabix_stream = subprocess.Popen(
+                    shlex.split(f"tabix {file} {window.fmt}"),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except FileNotFoundError as e:
+                logging.error("Error when opening a tabix stream.")
+                logging.error(e, exc_info=True)
+                sys.stderr.write("\n\nERROR when opening a tabix stream.\n")
+                sys.stderr.write("Is tabix installed and on the PATH?\n")
+                sys.stderr.write(
+                    f"\n\n\nDetailed error: {tabix_stream.stderr.read()}\n"
+                )
+                raise
+            if tabix_stream.returncode:
+                sys.exit(f"\n\n\nReceived tabix error\n\n{tabix_stream.stderr.read()}")
+
+            header = gzip.open(file, "rt").readline().rstrip().split("\t")
+            table = pd.read_csv(
+                tabix_stream.stdout, sep="\t", header=None, names=header
+            )
+            logging.info("Read the file in a dataframe.")
+        else:
+            table = pd.read_csv(file, sep="\t")
+        logging.info("Read the file in a dataframe.")
+        table.drop(
+            [
+                "group_sequence",
+                "called_sites_methylated",
+                "num_motifs_in_group",
+                "called_sites",
+            ],
+            axis=1,
+            inplace=True,
+        )
+        table["midpoint"] = (table["start"] + table["end"]) / 2
+        table["position"] = table["chromosome"] + ":" + table["midpoint"].astype(str)
+        table = table.set_index("position").drop(
+            ["chromosome", "start", "end", "midpoint"], axis=1
+        )
+        dfs.append(table.rename(columns={"methylated_frequency": name}))
+    modfrequencytable = dfs[0].join(dfs[1:], how="outer")
+    modfrequencytable.reset_index(inplace=True)
+    print(modfrequencytable)
+    modfrequencytable["chrom"] = modfrequencytable["position"].str.split(
+        ":", expand=True
+    )[0]
+    modfrequencytable["position"] = modfrequencytable["position"].str.split(
+        ":", expand=True
+    )[1]
+    modfrequencytable.set_index(["chrom", "position"], inplace=True)
+    modfrequencytable.reset_index(inplace=True)
+    if len(modfrequencytable) == 0:
+        err = "WARNING: length of modification frequency table is zero. Do the input files contain data?"
+        logging.error(err)
+        sys.exit(err)
+
+    if args.files:
+        if args.groups:
+            if args.dendro:
+                err = "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
+                logging.warning(err)
+                sys.stderr.write(err)
+            else:
+                logging.info("Sort columns of modfrequencytable based on group")
+                headerlist = list(modfrequencytable.columns.values)
+                if len(headerlist) == len(args.groups):
+                    res = zip(headerlist, args.groups)
+                    output = sorted(list(res), key=lambda x: x[1])
+                    orderedlist = [i[0] for i in output]
+                    modfrequencytable = modfrequencytable.reindex(columns=orderedlist)
+                else:
+                    sys.exit(
+                        f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
+                    )
+    modfrequencytable.set_index(["chrom"], inplace=True)
+    print(modfrequencytable)
+    return modfrequencytable
+
+
 def file_sniffer(filename):
     """
     Takes in a filename and tries to guess the input file type.
     """
     if not Path(filename).is_file():
         sys.exit(f"\n\nERROR: File {filename} does not exist, please check the path!\n")
-    if not (is_bam_file(filename) or is_cram_file(filename)):
-        sys.exit(f"\n\n\nInput file type {filename} not recognized!\n")
+    if is_bam_file(filename):  # input BAM
+        return "bam"
+    if is_cram_file(filename):  # input CRAM
+        return "cram"
+    # input: calculate_methylation_frequency.py output (.tsv or .tsv.gz) OR own modfreqtable (.tsv or .tsv.gz)
+    if is_gz_file(filename):
+        import gzip
+
+        header = gzip.open(filename, "rt").readline()
+    else:
+        header = open(filename, "r").readline()
+
+    if "methylated_frequency" in header:
+        # calculate_methylation_frequency.py output as input
+        return "nanopolish_calc_meth_freq"
+    sys.exit(f"\n\n\nInput file {filename} not recognized!\n")
 
 
 def is_cram_file(filepath):
@@ -260,6 +393,13 @@ def is_bam_file(filepath):
             return test_f.read(3) == b"BAM"
     except OSError:
         return False
+
+
+def is_gz_file(filepath):
+    import binascii
+
+    with open(filepath, "rb") as test_f:
+        return binascii.hexlify(test_f.read(2)) == b"1f8b"
 
 
 class Region(object):
