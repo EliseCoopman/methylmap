@@ -6,6 +6,7 @@ from methylmap.region import Region
 from methylmap.process_1000Genomes import process_1000Genomes
 from methylmap.version import __version__
 
+
 import os
 import re
 import sys
@@ -413,7 +414,7 @@ def main():
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv or .tsv.gz modification frequency table. "
+                                                "Drag and drop your .tsv modification frequency table. "
                                             ],
                                             style={
                                                 "textAlign": "center",
@@ -630,7 +631,7 @@ def main():
                                 id="error-message",
                                 style={"color": "red"},
                             ),
-                            meth_browser(app, args, gff),
+                            meth_browser(app, args, gff, genes_to_coords),
                             dcc_store(app, args, genes_to_coords),
                         ],
                     ),
@@ -758,7 +759,7 @@ def get_args():
                 )
     if args.files or args.table:
         if not args.window:
-            sys.exit("ERROR: please provide a genomic region")
+            sys.exit("ERROR: please provide a genomic region with --window")
     return args
 
 
@@ -946,6 +947,7 @@ def dcc_store(app, args, genes_to_coords):
                 component_id="error-message-uploadowndata",
                 component_property="children",
             ),
+            Output(component_id="intermediate-data_window", component_property="data"),
         ],
         [
             Input(component_id="confirm-button", component_property="n_clicks"),
@@ -978,33 +980,50 @@ def dcc_store(app, args, genes_to_coords):
             and args.files is None
             and upload_data is None
         ):
-            return None, None
+            return None, None, None
         if input_box["props"]["value"] is None and upload_data is not None:
-            return None, "please enter a genomic region"
-        window = window_input(
-            confirm_button,
-            button_o3,
-            button_o10,
-            button_i3,
-            button_i10,
-            input_box,
-            args.window,
-            genes_to_coords,
-        )
-        window_region = Region(window)
-        if upload_data is None:
-            mod_data = mod_freq_data(args, window_region)
-            mod_data = mod_data.reset_index(level="chrom", drop=True)
-            json_data = mod_data.to_json(orient="split")
-        elif upload_data is not None:
             args_False = False
+            window = None
             mod_data = mod_freq_data(
-                args_False, window_region, upload_data, filename, last_modified
+                args_False, window, upload_data, filename, last_modified
             )
+            first_chrom = mod_data["chrom"].iloc[0]
+            chrom_df = mod_data[mod_data["chrom"] == first_chrom]
+            min_start = chrom_df["position"].min()
+            max_end = chrom_df["position"].max()
+            intermediate_data_window = f"{first_chrom}:{min_start}-{max_end}"
+            mod_data.drop(columns=["chrom"], inplace=True)
+            mod_data.set_index("position", inplace=True)
             json_data = mod_data.to_json(orient="split")
-        return json_data, None
+            return json_data, None, intermediate_data_window
 
-    return dcc.Store(id="intermediate-data")
+        else:
+            window = window_input(
+                confirm_button,
+                button_o3,
+                button_o10,
+                button_i3,
+                button_i10,
+                input_box,
+                args.window,
+                genes_to_coords,
+            )
+            window_region = Region(window)
+            if upload_data is None:
+                mod_data = mod_freq_data(args, window_region)
+                mod_data = mod_data.reset_index(level="chrom", drop=True)
+                json_data = mod_data.to_json(orient="split")
+            elif upload_data is not None:
+                args_False = False
+                mod_data = mod_freq_data(
+                    args_False, window_region, upload_data, filename, last_modified
+                )
+                json_data = mod_data.to_json(orient="split")
+            return json_data, None, None
+
+    return html.Div(
+        [dcc.Store(id="intermediate-data"), dcc.Store(id="intermediate-data_window")]
+    )
 
 
 def process_fig(
@@ -1108,7 +1127,7 @@ def browser_information(
     return window, dendro, annotation, simplify, num_row, num_col, subplots
 
 
-def meth_browser(app, args, gff_file):
+def meth_browser(app, args, gff_file, genes_to_coords):
     @app.callback(
         [
             Output(component_id="plot", component_property="children"),
@@ -1156,6 +1175,7 @@ def meth_browser(app, args, gff_file):
                     annotation,
                     annotation_type,
                     args.window,
+                    genes_to_coords,
                 )
             )
 
@@ -1261,19 +1281,16 @@ def input_box(app, args):
             Input(component_id="button-o10", component_property="n_clicks"),
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
+            Input(component_id="intermediate-data_window", component_property="data"),
         ],
         [State(component_id="input-box", component_property="children")],
     )
-    def update_value(button_o3, button_o10, button_i3, button_i10, window):
-        if window["props"]["value"] is None and args.window is None:
-            window = None
-            return html.Div(
-                dcc.Input(type="text", value=window),
-                id="input-box",
-                style={"height": "30px"},
-            )
-        else:
-            window = Region(window["props"]["value"]) if window else Region(args.window)
+    def update_value(
+        button_o3, button_o10, button_i3, button_i10, intermediate_data_window, window
+    ):
+        if window["props"]["value"] is not None or args.window is not None:
+            window = window["props"]["value"] if window else args.window
+            window = Region(window)
             if "button-o3" == ctx.triggered_id:
                 window = window * 3
             elif "button-o10" == ctx.triggered_id:
@@ -1290,6 +1307,33 @@ def input_box(app, args):
                     "height": "30px",
                     "margin": "0px 2px",
                 },
+            )
+        elif intermediate_data_window is not None:
+            window = intermediate_data_window
+            window = Region(window)
+            if "button-o3" == ctx.triggered_id:
+                window = window * 3
+            elif "button-o10" == ctx.triggered_id:
+                window = window * 10
+            elif "button-i3" == ctx.triggered_id:
+                window = window / 3
+            elif "button-i10" == ctx.triggered_id:
+                window = window / 10
+            window = window.fmt
+            return html.Div(
+                dcc.Input(type="text", value=window),
+                id="input-box",
+                style={
+                    "height": "30px",
+                    "margin": "0px 2px",
+                },
+            )
+        elif window["props"]["value"] is None and args.window is None:
+            window = None
+            return html.Div(
+                dcc.Input(type="text", value=window),
+                id="input-box",
+                style={"height": "30px"},
             )
 
     return html.Div(

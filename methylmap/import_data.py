@@ -196,40 +196,47 @@ def parse_modfrequencytable(
         except Exception as e:
             print(e)
             return
-        
+        if window is not None:
+            df = df[df["chrom"] == window.chromosome]
+            df = df[df["position"].between(window.begin, window.end)]
+            df.drop(["chrom"], axis=1, inplace=True)
+            df.set_index(["position"], inplace=True)
+        if window is None:
+            first_chromosome = df["chrom"].unique()[0]
+            df = df[df["chrom"] == first_chromosome]
+
     else:
         df = pd.read_table(args.table).sort_values("position", ascending=True)
 
-    if window:
-        logging.info("Select window out of modfreqtable")
-        df = df[df["position"].between(window.begin, window.end)]
-    else:
-        if args.gff:
-            logging.info(
-                "If no window given and annotation requested, take window out of modfreqtable."
-            )
-            if len(df["chrom"].unique()) > 1:
-                sys.exit(
-                    "\n\nError when extracting window out of modfreqtable positions. Chrom column can not contain more than one chromosome \n"
+        if window:
+            logging.info("Select window out of modfreqtable")
+            df = df[df["position"].between(window.begin, window.end)]
+        else:
+            if args.gff:
+                logging.info(
+                    "If no window given and annotation requested, take window out of modfreqtable."
                 )
-            chrom = df.iloc[0, df.columns.get_loc("chrom")]
-            if chrom.startswith("chr"):  # if in format "chr1"
-                chrom = chrom
-            else:  # if in format "1"
-                chrom = "chr" + chrom
-            numberofpositions = len(df) - 1
-            begin = float(df["position"].iat[0])
-            end = float(df["position"].iat[numberofpositions])
-            window = Region(f"{chrom}:{round(begin)}-{round(end)}")
+                if len(df["chrom"].unique()) > 1:
+                    sys.exit(
+                        "\n\nError when extracting window out of modfreqtable positions. Chrom column can not contain more than one chromosome \n"
+                    )
+                chrom = df.iloc[0, df.columns.get_loc("chrom")]
+                if chrom.startswith("chr"):  # if in format "chr1"
+                    chrom = chrom
+                else:  # if in format "1"
+                    chrom = "chr" + chrom
+                numberofpositions = len(df) - 1
+                begin = float(df["position"].iat[0])
+                end = float(df["position"].iat[numberofpositions])
+                window = Region(f"{chrom}:{round(begin)}-{round(end)}")
 
-    df.drop(["chrom"], axis=1, inplace=True)
-    df.set_index("position", inplace=True)
-    if len(df) == 0:
-        err = "WARNING: length of modification frequency table is zero. Does the input table contain data?"
-        logging.error(err)
-        sys.exit(err)
+        df.drop(["chrom"], axis=1, inplace=True)
+        df.set_index(["position"], inplace=True)
+        if len(df) == 0:
+            err = "WARNING: length of modification frequency table is zero. Does the input table contain data?"
+            logging.error(err)
+            sys.exit(err)
 
-    if not upload_data:
         if args.names:
             logging.info("Changes sample names to names from --names input")
             df.columns = args.names
@@ -251,7 +258,7 @@ def parse_modfrequencytable(
                     err = f"Error when matching --groups with samples. Is length of the --groups list ({len(args.groups)}) matching with number of samples in table?"
                     logging.error(err)
                     sys.exit(err)
-
+        print(df)
     return df
 
 
