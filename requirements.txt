@@ -1,0 +1,10 @@
+python >=3
+numpy==1.23.5
+pandas==2.2.0
+plotly >=5.4.0
+pyranges >=0.0.77
+scipy==1.10.1
+dash==2.13.0
+dash-bootstrap-components==1.6.0
+htslib==1.16
+samtools==1.16.1
