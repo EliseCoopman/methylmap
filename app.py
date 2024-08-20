@@ -660,7 +660,6 @@ def main():
             return {"display": "none"}
 
     app.title = "methylmap"
-    #app.run(debug=True)
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 
@@ -844,7 +843,19 @@ def Genome_browser(app, gff, genes_to_coords):
         )
 
         return (
-            html.Div(dcc.Graph(figure=fig), id="plot_1000Genomes"),
+            html.Div(
+                dcc.Graph(
+                    figure=fig,
+                    config={
+                        "toImageButtonOptions": {
+                            "format": "png",  # one of png, svg, jpeg, webp
+                            "filename": "1000Genomesplot",
+                            "scale": 4,  # Multiply title/legend/axis/canvas sizes by this factor
+                        }
+                    },
+                ),
+                id="plot_1000Genomes",
+            ),
             None,
         )  # No error message
 
