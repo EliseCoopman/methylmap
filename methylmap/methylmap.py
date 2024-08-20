@@ -660,7 +660,7 @@ def main():
             return {"display": "none"}
 
     app.title = "methylmap"
-    #app.run(debug=True)
+    # app.run(debug=True)
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 
