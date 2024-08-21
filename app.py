@@ -850,7 +850,9 @@ def Genome_browser(app, gff, genes_to_coords):
                         "toImageButtonOptions": {
                             "format": "png",  # one of png, svg, jpeg, webp
                             "filename": "1000Genomesplot",
-                            "scale": 4,  # Multiply title/legend/axis/canvas sizes by this factor
+                            "height": 700,
+                            "width": 900,
+                            "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
                         }
                     },
                 ),
