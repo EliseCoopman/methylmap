@@ -12,7 +12,7 @@ https://www.medrxiv.org/content/10.1101/2024.03.05.24303792v1 (the underlying 10
 
 ### EXAMPLE
 
-![GNAS methylmap](example/20221213182515.png)  
+![GNAS methylmap](assets/1000Genomes_GNAS.png)  
 
 ### INPUT POSSIBILITIES
 
