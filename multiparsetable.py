@@ -86,7 +86,6 @@ def main():
     args = get_args()
     window = Region(args.window, args.expand)
     file_type = file_sniffer(args.files[0])
-    print(f"file_typeeeeeeeeeeeeeeeeeeeeeee: {file_type}")
     try:
         if file_type == "nanopolish_calc_meth_freq":
             overviewtable = parse_nanopolish(args, window)
@@ -122,7 +121,6 @@ def parse_bam(args, window):
         )
 
     dfs = list(itertools.chain(*results))
-    print(dfs)
 
     methfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
@@ -319,7 +317,6 @@ def parse_nanopolish(args, window):
         dfs.append(table.rename(columns={"methylated_frequency": name}))
     modfrequencytable = dfs[0].join(dfs[1:], how="outer")
     modfrequencytable.reset_index(inplace=True)
-    print(modfrequencytable)
     modfrequencytable["chrom"] = modfrequencytable["position"].str.split(
         ":", expand=True
     )[0]
@@ -352,7 +349,9 @@ def parse_nanopolish(args, window):
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
                     )
     modfrequencytable.set_index(["chrom"], inplace=True)
-    print(modfrequencytable)
+    modfrequencytable["position"] = (
+        modfrequencytable["position"].astype(float).astype(int)
+    )
     return modfrequencytable
 
 
