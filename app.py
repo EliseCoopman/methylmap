@@ -99,7 +99,7 @@ def main():
                                     dbc.Row(
                                         [
                                             html.H1(
-                                                "Example",
+                                                "Example: GNAS region from ONT 1000Genomes",
                                                 style={
                                                     "bottommargin": "0px",
                                                     "font-size": "25px",
@@ -225,7 +225,7 @@ def main():
                         selected_style=tab_selected_style,
                         children=[
                             html.H1(
-                                "Methylation frequencies ONT 1000Genomes",
+                                "Haplotype-specific methylation frequencies ONT 1000Genomes",
                                 style={
                                     "bottommargin": "0px",
                                     "font-size": "25px",
@@ -242,7 +242,9 @@ def main():
                                             dbc.Col(
                                                 html.Div(
                                                     [
-                                                        input_box_genomebrowser(app),
+                                                        input_box_genomebrowser(
+                                                            app, genes_to_coords
+                                                        ),
                                                         html.Button(
                                                             id="confirm-button_1000Genomes",
                                                             n_clicks=0,
@@ -383,6 +385,12 @@ def main():
                                                 ),
                                                 width=2,
                                             ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="hierarchical_clustering_1000Genomes_message",
+                                                    children="In case of missing values, values are estimated using interpolation.",
+                                                ),
+                                            ),
                                         ],
                                         align="center",
                                     ),
@@ -414,7 +422,7 @@ def main():
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv modification frequency table. "
+                                                "Drag and drop your .tsv modification frequency table and click on the 'Confirm' button."
                                             ],
                                             style={
                                                 "textAlign": "center",
@@ -458,7 +466,7 @@ def main():
                                     "margin": "10px",
                                 },
                                 multiple=False,
-                                max_size=100000,
+                                max_size=10000000,
                             ),
                             dbc.Container(
                                 children=[
@@ -622,6 +630,12 @@ def main():
                                                 ),
                                                 width=2,
                                             ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="hierarchical_clustering_message",
+                                                    children="In case of missing values, values are estimated using interpolation.",
+                                                ),
+                                            ),
                                         ],
                                         align="center",
                                     ),
@@ -658,6 +672,24 @@ def main():
             return {"display": "block"}
         else:
             return {"display": "none"}
+
+    @app.callback(
+    Output("hierarchical_clustering_1000Genomes_message", "style"),
+    Input("hierarchical_clustering_1000Genomes", "value"),
+)
+    def update_message_visibility(selected_value):
+        if selected_value == "on":
+            return {"display": "block"}  # Show the message when 'On' is selected
+        return {"display": "none"}  # Hide the message when 'Off' is selected
+
+    @app.callback(
+        Output("hierarchical_clustering_message", "style"),
+        Input("hierarchical_clustering", "value"),
+    )
+    def update_message_visibility(selected_value):
+        if selected_value == "on":
+            return {"display": "block"}  # Show the message when 'On' is selected
+        return {"display": "none"}  # Hide the message when 'Off' is selected
 
     app.title = "methylmap"
     app.run(host=args.host, port=args.port, debug=args.debug)
@@ -806,7 +838,7 @@ def Genome_browser(app, gff, genes_to_coords):
         annotation_1000Genomes,
         annotation_type_1000Genomes,
         mod_data_1000Genomes,
-        window_1000Genomes,
+        inputbox_1000Genomes,
     ):
         window, dendro, annotation, simplify, num_row, num_col, subplots = (
             browser_information(
@@ -815,7 +847,7 @@ def Genome_browser(app, gff, genes_to_coords):
                 button_o10_1000Genomes,
                 button_i3_1000Genomes,
                 button_i10_1000Genomes,
-                window_1000Genomes,
+                inputbox_1000Genomes,
                 hierarchical_clustering_1000Genomes,
                 annotation_1000Genomes,
                 annotation_type_1000Genomes,
@@ -829,7 +861,6 @@ def Genome_browser(app, gff, genes_to_coords):
             json_data_1000Genomes["data"], columns=json_data_1000Genomes["columns"]
         )
         mod_data_1000Genomes.index = json_data_1000Genomes["index"]
-
         fig = process_fig(
             mod_data_1000Genomes,
             dendro,
@@ -841,7 +872,6 @@ def Genome_browser(app, gff, genes_to_coords):
             simplify,
             gff,
         )
-
         return (
             html.Div(
                 dcc.Graph(
@@ -850,8 +880,8 @@ def Genome_browser(app, gff, genes_to_coords):
                         "toImageButtonOptions": {
                             "format": "png",  # one of png, svg, jpeg, webp
                             "filename": "1000Genomesplot",
-                            "height": 700,
-                            "width": 900,
+                            "height": "100vh",
+                            "width": "100vh",
                             "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
                         }
                     },
@@ -862,42 +892,6 @@ def Genome_browser(app, gff, genes_to_coords):
         )  # No error message
 
     return html.Div(id="plot_1000Genomes")
-
-
-def input_box_genomebrowser(app):
-    gnas_region = "chr20:58,839,718-58,911,192"
-
-    @app.callback(
-        Output(component_id="input-box_1000Genomes", component_property="children"),
-        [
-            Input(component_id="button-o3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
-        ],
-        [State(component_id="input-box_1000Genomes", component_property="children")],
-    )
-    def update_value(button_o3, button_o10, button_i3, button_i10, window):
-        window = Region(window["props"]["value"]) if window else Region(gnas_region)
-        if "button-o3" == ctx.triggered_id:
-            window = window * 3
-        elif "button-o10" == ctx.triggered_id:
-            window = window * 10
-        elif "button-i3" == ctx.triggered_id:
-            window = window / 3
-        elif "button-i10" == ctx.triggered_id:
-            window = window / 10
-        return html.Div(
-            dcc.Input(type="text", value=window.fmt),
-            id="input-box_1000Genomes",
-            style={"height": "30px", "margin": "0px 2px"},
-        )
-
-    return html.Div(
-        dcc.Input(type="text", value=gnas_region),
-        id="input-box_1000Genomes",
-        style={"height": "30px", "margin": "0px 2px"},
-    )
 
 
 def dcc_store_genome_browser(app, db, genes_to_coords):
@@ -913,29 +907,22 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
             Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
             Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
             Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
+            Input(component_id="input-box_1000Genomes", component_property="children"),
         ],
         [
             State(component_id="input-box_1000Genomes", component_property="children"),
         ],
     )
     def generate_data(
-        confirm_button_1000Genomes,
+        button_confirm_1000Genomes,
         button_o3_1000Genomes,
         button_o10_1000Genomes,
         button_i3_1000Genomes,
         button_i10_1000Genomes,
         input_box_1000Genomes,
+        input_box_1000Genomes2,
     ):
-        window = window_input(
-            confirm_button_1000Genomes,
-            button_o3_1000Genomes,
-            button_o10_1000Genomes,
-            button_i3_1000Genomes,
-            button_i10_1000Genomes,
-            input_box_1000Genomes,
-            gnas,
-            genes_to_coords,
-        )
+        window = window_input(input_box_1000Genomes, genes_to_coords, gnas)
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
         mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
@@ -945,6 +932,64 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
         return json_data_1000Genomes
 
     return dcc.Store(id="intermediate-data_1000Genomes")
+
+
+def input_box_genomebrowser(app, genes_to_coords):
+    gnas_region = "chr20:58,839,718-58,911,192"
+
+    @app.callback(
+        Output(component_id="input-box_1000Genomes", component_property="children"),
+        [
+            Input(
+                component_id="confirm-button_1000Genomes", component_property="n_clicks"
+            ),
+            Input(component_id="button-o3_1000Genomes", component_property="n_clicks"),
+            Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
+            Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
+            Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
+        ],
+        [State(component_id="input-box_1000Genomes", component_property="children")],
+    )
+    def update_value(
+        button_confirm_1000Genomes,
+        button_o3_1000Genomes,
+        button_o10_1000Genomes,
+        button_i3_1000Genomes,
+        button_i10_1000Genomes,
+        window,
+    ):
+        window = window["props"]["value"] if window else gnas_region
+        if not validate_input(window):
+            # if the input is not in the correct format to be coordinates, check if it is a gene name
+            coords = genes_to_coords.get(window)
+            if not coords:
+                return (
+                    None,
+                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
+            else:
+                window = coords
+        window = Region(window)
+        if "button-o3_1000Genomes" == ctx.triggered_id:
+            window = window * 3
+        elif "button-o10_1000Genomes" == ctx.triggered_id:
+            window = window * 10
+        elif "button-i3_1000Genomes" == ctx.triggered_id:
+            window = window / 3
+        elif "button-i10_1000Genomes" == ctx.triggered_id:
+            window = window / 10
+        window = window.fmt
+        return html.Div(
+            dcc.Input(type="text", value=window),
+            id="input-box_1000Genomes",
+            style={"height": "30px", "margin": "0px 2px"},
+        )
+
+    return html.Div(
+        dcc.Input(type="text", value=gnas_region),
+        id="input-box_1000Genomes",
+        style={"height": "30px", "margin": "0px 2px"},
+    )
 
 
 def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=None):
@@ -969,6 +1014,7 @@ def dcc_store(app, args, genes_to_coords):
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
             Input(component_id="upload-data", component_property="contents"),
+            Input(component_id="input-box", component_property="children"),
         ],
         [
             State(component_id="input-box", component_property="children"),
@@ -984,6 +1030,7 @@ def dcc_store(app, args, genes_to_coords):
         button_i10,
         upload_data,
         input_box,
+        input_box_2,
         filename,
         last_modified,
     ):
@@ -1001,9 +1048,8 @@ def dcc_store(app, args, genes_to_coords):
                 args_False, window, upload_data, filename, last_modified
             )
             first_chrom = mod_data["chrom"].iloc[0]
-            chrom_df = mod_data[mod_data["chrom"] == first_chrom]
-            min_start = chrom_df["position"].min()
-            max_end = chrom_df["position"].max()
+            min_start = mod_data["position"].min()
+            max_end = mod_data["position"].max()
             intermediate_data_window = f"{first_chrom}:{min_start}-{max_end}"
             mod_data.drop(columns=["chrom"], inplace=True)
             mod_data.set_index("position", inplace=True)
@@ -1011,16 +1057,7 @@ def dcc_store(app, args, genes_to_coords):
             return json_data, None, intermediate_data_window
 
         else:
-            window = window_input(
-                confirm_button,
-                button_o3,
-                button_o10,
-                button_i3,
-                button_i10,
-                input_box,
-                args.window,
-                genes_to_coords,
-            )
+            window = window_input(input_box, genes_to_coords, args.window)
             window_region = Region(window)
             if upload_data is None:
                 mod_data = mod_freq_data(args, window_region)
@@ -1102,7 +1139,7 @@ def browser_information(
     button_o10,
     button_i3,
     button_i10,
-    window,
+    input_box,
     hierarchical_clustering,
     annotation,
     annotation_type,
@@ -1110,18 +1147,9 @@ def browser_information(
     genes_to_coords,
 ):
     # Validate the input format
-
-    window = window_input(
-        button_confirm,
-        button_o3,
-        button_o10,
-        button_i3,
-        button_i10,
-        window,
-        windowregion,
-        genes_to_coords,
-    )
-
+    if windowregion is None and input_box["props"]["value"] is None:
+        return None, None, None, None, None, None, None
+    window = window_input(input_box, genes_to_coords, windowregion)
     # Convert checklist values to boolean flags
     dendro = "on" in hierarchical_clustering
     annotation = "on" in annotation
@@ -1171,9 +1199,11 @@ def meth_browser(app, args, gff_file, genes_to_coords):
         annotation,
         annotation_type,
         mod_data,
-        window,
+        input_box,
     ):
-        if window["props"]["value"] is None and mod_data is None:
+
+        if input_box["props"]["value"] is None and mod_data is None:
+
             return None, None
         else:
             window, dendro, annotation, simplify, num_row, num_col, subplots = (
@@ -1183,7 +1213,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                     button_o10,
                     button_i3,
                     button_i10,
-                    window,
+                    input_box,
                     hierarchical_clustering,
                     annotation,
                     annotation_type,
@@ -1191,6 +1221,9 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                     genes_to_coords,
                 )
             )
+        if num_row is None and num_col is None:
+            return None, None
+        else:
 
             json_data = json.loads(mod_data)
             mod_data = pd.DataFrame(json_data["data"], columns=json_data["columns"])
@@ -1216,16 +1249,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
     return html.Div(id="plot")
 
 
-def window_input(
-    confirm_button,
-    button_o3,
-    button_o10,
-    button_i3,
-    button_i10,
-    input_box,
-    window,
-    genes_to_coords,
-):
+def window_input(input_box, genes_to_coords, window):
     if input_box["props"]["value"] is None and window is None:
         window = None
     else:
@@ -1240,18 +1264,8 @@ def window_input(
                 )
             else:
                 window_input = coords
-        window = Region(window_input)
-        if "button-o3" == ctx.triggered_id:
-            window = window * 3
-        elif "button-o10" == ctx.triggered_id:
-            window = window * 10
-        elif "button-i3" == ctx.triggered_id:
-            window = window / 3
-        elif "button-i10" == ctx.triggered_id:
-            window = window / 10
-        window = window.fmt
 
-    return window
+    return window_input
 
 
 def validate_input(input_text):
@@ -1283,7 +1297,6 @@ def make_gene_to_coords_dict(gff_file):
 
 
 def input_box(app, args):
-
     @app.callback(
         Output(
             component_id="input-box",
