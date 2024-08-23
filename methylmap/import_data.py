@@ -188,22 +188,25 @@ def parse_modfrequencytable(
         decoded = base64.b64decode(content_string)
         try:
             if "tsv" in filename:
-                df = pd.read_csv(
-                    io.StringIO(decoded.decode("utf-8")), sep="\t"
-                ).sort_values("position", ascending=True)
+                if window is not None:
+                    df = pd.read_csv(
+                        io.StringIO(decoded.decode("utf-8")), sep="\t"
+                    ).sort_values("position", ascending=True)
+                    df = df[df["chrom"] == window.chromosome]
+                    df = df[df["position"].between(window.begin, window.end)]
+                    df.drop(["chrom"], axis=1, inplace=True)
+                    df.set_index(["position"], inplace=True)
+                if window is None:
+                    df = pd.read_csv(
+                        io.StringIO(decoded.decode("utf-8")), sep="\t", nrows=500
+                    ).sort_values("position", ascending=True)
+                    first_chromosome = df["chrom"].unique()[0]
+                    df = df[df["chrom"] == first_chromosome]
             else:
                 return
         except Exception as e:
             print(e)
             return
-        if window is not None:
-            df = df[df["chrom"] == window.chromosome]
-            df = df[df["position"].between(window.begin, window.end)]
-            df.drop(["chrom"], axis=1, inplace=True)
-            df.set_index(["position"], inplace=True)
-        if window is None:
-            first_chromosome = df["chrom"].unique()[0]
-            df = df[df["chrom"] == first_chromosome]
 
     else:
         df = pd.read_table(args.table).sort_values("position", ascending=True)
@@ -258,7 +261,6 @@ def parse_modfrequencytable(
                     err = f"Error when matching --groups with samples. Is length of the --groups list ({len(args.groups)}) matching with number of samples in table?"
                     logging.error(err)
                     sys.exit(err)
-        print(df)
     return df
 
 
