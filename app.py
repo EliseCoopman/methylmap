@@ -422,7 +422,7 @@ def main():
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv modification frequency table and click on the 'Confirm' button."
+                                                "Drag and drop your .tsv modification frequency table, enter you genomic region of interest and click on the 'Confirm' button."
                                             ],
                                             style={
                                                 "textAlign": "center",
@@ -1005,7 +1005,6 @@ def dcc_store(app, args, genes_to_coords):
                 component_id="error-message-uploadowndata",
                 component_property="children",
             ),
-            Output(component_id="intermediate-data_window", component_property="data"),
         ],
         [
             Input(component_id="confirm-button", component_property="n_clicks"),
@@ -1040,7 +1039,7 @@ def dcc_store(app, args, genes_to_coords):
             and args.files is None
             and upload_data is None
         ):
-            return None, None, None
+            return None, None
         if input_box["props"]["value"] is None and upload_data is not None:
             args_False = False
             window = None
@@ -1050,13 +1049,13 @@ def dcc_store(app, args, genes_to_coords):
             first_chrom = mod_data["chrom"].iloc[0]
             min_start = mod_data["position"].min()
             max_end = mod_data["position"].max()
-            intermediate_data_window = f"{first_chrom}:{min_start}-{max_end}"
             mod_data.drop(columns=["chrom"], inplace=True)
             mod_data.set_index("position", inplace=True)
             json_data = mod_data.to_json(orient="split")
-            return json_data, None, intermediate_data_window
+            return json_data,  None
 
         else:
+            print("goingggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
             window = window_input(input_box, genes_to_coords, args.window)
             window_region = Region(window)
             if upload_data is None:
@@ -1069,10 +1068,10 @@ def dcc_store(app, args, genes_to_coords):
                     args_False, window_region, upload_data, filename, last_modified
                 )
                 json_data = mod_data.to_json(orient="split")
-            return json_data, None, None
+            return json_data, None
 
     return html.Div(
-        [dcc.Store(id="intermediate-data"), dcc.Store(id="intermediate-data_window")]
+        [dcc.Store(id="intermediate-data")]
     )
 
 
@@ -1201,11 +1200,14 @@ def meth_browser(app, args, gff_file, genes_to_coords):
         mod_data,
         input_box,
     ):
-
+        print("going through the meth_browser functionnnnnnnnnnnnnnnnnnnnnnnnnn")
+        print("input_box", input_box)
         if input_box["props"]["value"] is None and mod_data is None:
+            print("going through 111111111111111111111111111111111111111111111111111111111111111")
 
             return None, None
         else:
+            print("going through 2222222222222222222222222222222222222222222222222222")
             window, dendro, annotation, simplify, num_row, num_col, subplots = (
                 browser_information(
                     button_confirm,
@@ -1232,6 +1234,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                 gff = args.gff
             else:
                 gff = gff_file
+            print("the windowwwwwwwwwwwwwwwwwwwwwwwwwwwwww is ", window)
             fig = process_fig(
                 mod_data,
                 dendro,
@@ -1308,14 +1311,13 @@ def input_box(app, args):
             Input(component_id="button-o10", component_property="n_clicks"),
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
-            Input(component_id="intermediate-data_window", component_property="data"),
         ],
         [
             State(component_id="input-box", component_property="children"),
         ],
     )
     def update_value(
-        button_o3, button_o10, button_i3, button_i10, intermediate_data_window, window
+        button_o3, button_o10, button_i3, button_i10, window
     ):
         if window["props"]["value"] is not None or args.window is not None:
             window = window["props"]["value"] if window else args.window
@@ -1337,26 +1339,7 @@ def input_box(app, args):
                     "margin": "0px 2px",
                 },
             )
-        elif intermediate_data_window is not None:
-            window = intermediate_data_window
-            window = Region(window)
-            if "button-o3" == ctx.triggered_id:
-                window = window * 3
-            elif "button-o10" == ctx.triggered_id:
-                window = window * 10
-            elif "button-i3" == ctx.triggered_id:
-                window = window / 3
-            elif "button-i10" == ctx.triggered_id:
-                window = window / 10
-            window = window.fmt
-            return html.Div(
-                dcc.Input(type="text", value=window),
-                id="input-box",
-                style={
-                    "height": "30px",
-                    "margin": "0px 2px",
-                },
-            )
+        
         elif window["props"]["value"] is None and args.window is None:
             window = None
             return html.Div(
