@@ -1046,16 +1046,12 @@ def dcc_store(app, args, genes_to_coords):
             mod_data = mod_freq_data(
                 args_False, window, upload_data, filename, last_modified
             )
-            first_chrom = mod_data["chrom"].iloc[0]
-            min_start = mod_data["position"].min()
-            max_end = mod_data["position"].max()
             mod_data.drop(columns=["chrom"], inplace=True)
             mod_data.set_index("position", inplace=True)
             json_data = mod_data.to_json(orient="split")
             return json_data,  None
 
         else:
-            print("goingggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
             window = window_input(input_box, genes_to_coords, args.window)
             window_region = Region(window)
             if upload_data is None:
@@ -1200,14 +1196,9 @@ def meth_browser(app, args, gff_file, genes_to_coords):
         mod_data,
         input_box,
     ):
-        print("going through the meth_browser functionnnnnnnnnnnnnnnnnnnnnnnnnn")
-        print("input_box", input_box)
         if input_box["props"]["value"] is None and mod_data is None:
-            print("going through 111111111111111111111111111111111111111111111111111111111111111")
-
             return None, None
         else:
-            print("going through 2222222222222222222222222222222222222222222222222222")
             window, dendro, annotation, simplify, num_row, num_col, subplots = (
                 browser_information(
                     button_confirm,
@@ -1234,7 +1225,6 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                 gff = args.gff
             else:
                 gff = gff_file
-            print("the windowwwwwwwwwwwwwwwwwwwwwwwwwwwwww is ", window)
             fig = process_fig(
                 mod_data,
                 dendro,
