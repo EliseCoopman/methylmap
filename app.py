@@ -880,8 +880,8 @@ def Genome_browser(app, gff, genes_to_coords):
                         "toImageButtonOptions": {
                             "format": "png",  # one of png, svg, jpeg, webp
                             "filename": "1000Genomesplot",
-                            "height": "100vh",
-                            "width": "100vh",
+                            "height": 800,
+                            "width": 1200,
                             "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
                         }
                     },
@@ -1297,6 +1297,7 @@ def make_gene_to_coords_dict(gff_file):
 
 
 def input_box(app, args):
+
     @app.callback(
         Output(
             component_id="input-box",
@@ -1309,7 +1310,9 @@ def input_box(app, args):
             Input(component_id="button-i10", component_property="n_clicks"),
             Input(component_id="intermediate-data_window", component_property="data"),
         ],
-        [State(component_id="input-box", component_property="children")],
+        [
+            State(component_id="input-box", component_property="children"),
+        ],
     )
     def update_value(
         button_o3, button_o10, button_i3, button_i10, intermediate_data_window, window
