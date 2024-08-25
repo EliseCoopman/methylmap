@@ -1,9 +1,12 @@
 import sys
 import logging
+import pandas as pd
 import plotly.figure_factory as ff
 
 
 def make_dendro(methfreqtable):
+    print(methfreqtable)
+    methfreqtable = methfreqtable.apply(pd.to_numeric, errors="coerce")
     number_of_nan_values = methfreqtable.isna().sum().sum()
     if number_of_nan_values != 0:
         logging.warning(
