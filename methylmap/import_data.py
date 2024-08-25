@@ -80,7 +80,7 @@ def parse_nanopolish(args, window):
         files, names = parse_overviewtable(args.table)
 
     dfs = []
-    for file, name in zip(files, names):
+    for file, name in zip(args.files, args.names):
         if window:
             if not Path(file + ".tbi").is_file():
                 logging.info(
@@ -143,10 +143,14 @@ def parse_nanopolish(args, window):
             inplace=True,
         )
         table["position"] = (table["start"] + table["end"]) / 2
-        table = table.set_index("position").drop(["chromosome", "start", "end"], axis=1)
+        table = table.set_index(["chromosome", "position"]).drop(
+            ["start", "end"], axis=1
+        )
         dfs.append(table.rename(columns={"methylated_frequency": name}))
     modfrequencytable = dfs[0].join(dfs[1:], how="outer")
 
+    modfrequencytable.reset_index(inplace=True)
+    modfrequencytable.rename(columns={"chromosome": "chrom"}, inplace=True)
     if len(modfrequencytable) == 0:
         err = "WARNING: length of modification frequency table is zero. Do the input files contain data?"
         logging.error(err)
@@ -154,7 +158,7 @@ def parse_nanopolish(args, window):
 
     modfreqtable = modfrequencytable.sort_values("position", ascending=True)
     # output is a modification frequency table with position as index and for each sample a column with all modification frequencies
-
+    modfreqtable.set_index(["chrom", "position"], inplace=True)
     if args.files:
         if args.groups:
             if args.dendro:
@@ -405,7 +409,6 @@ def parse_bam(args, window):
                     sys.exit(
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                     )
-
     return modfreqtable
 
 
