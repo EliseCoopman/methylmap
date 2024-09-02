@@ -260,6 +260,12 @@ def main():
                                                     },
                                                 )
                                             ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="error-message_1000Genomes_inputbox",
+                                                    style={"color": "red"},
+                                                ),
+                                            ),
                                         ],
                                     ),
                                     dbc.Row(style={"margin-top": "10px"}),
@@ -478,7 +484,9 @@ def main():
                                             dbc.Col(
                                                 html.Div(
                                                     [
-                                                        input_box(app, args),
+                                                        input_box(
+                                                            app, args, genes_to_coords
+                                                        ),
                                                         html.Button(
                                                             id="confirm-button",
                                                             n_clicks=0,
@@ -493,6 +501,12 @@ def main():
                                                         "align-items": "center",
                                                     },
                                                 )
+                                            ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="error-message-inputbox",
+                                                    style={"color": "red"},
+                                                ),
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -674,9 +688,9 @@ def main():
             return {"display": "none"}
 
     @app.callback(
-    Output("hierarchical_clustering_1000Genomes_message", "style"),
-    Input("hierarchical_clustering_1000Genomes", "value"),
-)
+        Output("hierarchical_clustering_1000Genomes_message", "style"),
+        Input("hierarchical_clustering_1000Genomes", "value"),
+    )
     def update_message_visibility(selected_value):
         if selected_value == "on":
             return {"display": "block"}  # Show the message when 'On' is selected
@@ -939,6 +953,10 @@ def input_box_genomebrowser(app, genes_to_coords):
 
     @app.callback(
         Output(component_id="input-box_1000Genomes", component_property="children"),
+        Output(
+            component_id="error-message_1000Genomes_inputbox",
+            component_property="children",
+        ),
         [
             Input(
                 component_id="confirm-button_1000Genomes", component_property="n_clicks"
@@ -961,10 +979,16 @@ def input_box_genomebrowser(app, genes_to_coords):
         window = window["props"]["value"] if window else gnas_region
         if not validate_input(window):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
+            window = window.upper()
             coords = genes_to_coords.get(window)
             if not coords:
+                window = "error"
                 return (
-                    None,
+                    html.Div(
+                        dcc.Input(type="text", value=window),
+                        id="input-box_1000Genomes",
+                        style={"height": "30px", "margin": "0px 2px"},
+                    ),
                     "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
@@ -979,10 +1003,13 @@ def input_box_genomebrowser(app, genes_to_coords):
         elif "button-i10_1000Genomes" == ctx.triggered_id:
             window = window / 10
         window = window.fmt
-        return html.Div(
-            dcc.Input(type="text", value=window),
-            id="input-box_1000Genomes",
-            style={"height": "30px", "margin": "0px 2px"},
+        return (
+            html.Div(
+                dcc.Input(type="text", value=window),
+                id="input-box_1000Genomes",
+                style={"height": "30px", "margin": "0px 2px"},
+            ),
+            None,
         )
 
     return html.Div(
@@ -1049,7 +1076,7 @@ def dcc_store(app, args, genes_to_coords):
             mod_data.drop(columns=["chrom"], inplace=True)
             mod_data.set_index("position", inplace=True)
             json_data = mod_data.to_json(orient="split")
-            return json_data,  None
+            return json_data, None
 
         else:
             window = window_input(input_box, genes_to_coords, args.window)
@@ -1066,9 +1093,7 @@ def dcc_store(app, args, genes_to_coords):
                 json_data = mod_data.to_json(orient="split")
             return json_data, None
 
-    return html.Div(
-        [dcc.Store(id="intermediate-data")]
-    )
+    return html.Div([dcc.Store(id="intermediate-data")])
 
 
 def process_fig(
@@ -1249,10 +1274,14 @@ def window_input(input_box, genes_to_coords, window):
         window_input = input_box["props"]["value"] if input_box else window
         if not validate_input(window_input):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
+            window_input = (
+                window_input.upper()
+            )  # make sure the gene name is in uppercase
             coords = genes_to_coords.get(window_input)
+
             if not coords:
                 return (
-                    None,
+                    "error",
                     "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
@@ -1289,14 +1318,18 @@ def make_gene_to_coords_dict(gff_file):
     return genes_to_coords
 
 
-def input_box(app, args):
-
+def input_box(app, args, genes_to_coords):
     @app.callback(
         Output(
             component_id="input-box",
             component_property="children",
         ),
+        Output(
+            component_id="error-message-inputbox",
+            component_property="children",
+        ),
         [
+            Input(component_id="confirm-button", component_property="n_clicks"),
             Input(component_id="button-o3", component_property="n_clicks"),
             Input(component_id="button-o10", component_property="n_clicks"),
             Input(component_id="button-i3", component_property="n_clicks"),
@@ -1307,10 +1340,26 @@ def input_box(app, args):
         ],
     )
     def update_value(
-        button_o3, button_o10, button_i3, button_i10, window
+        confirm_button, button_o3, button_o10, button_i3, button_i10, window
     ):
         if window["props"]["value"] is not None or args.window is not None:
             window = window["props"]["value"] if window else args.window
+            if not validate_input(window):
+                # if the input is not in the correct format to be coordinates, check if it is a gene name
+                window = window.upper()
+                coords = genes_to_coords.get(window)
+                if not coords:
+                    window = "error"
+                    return (
+                        html.Div(
+                            dcc.Input(type="text", value=window),
+                            id="input-box",
+                            style={"height": "30px", "margin": "0px 2px"},
+                        ),
+                        "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    )
+                else:
+                    window = coords
             window = Region(window)
             if "button-o3" == ctx.triggered_id:
                 window = window * 3
@@ -1321,21 +1370,27 @@ def input_box(app, args):
             elif "button-i10" == ctx.triggered_id:
                 window = window / 10
             window = window.fmt
-            return html.Div(
-                dcc.Input(type="text", value=window),
-                id="input-box",
-                style={
-                    "height": "30px",
-                    "margin": "0px 2px",
-                },
+            return (
+                html.Div(
+                    dcc.Input(type="text", value=window),
+                    id="input-box",
+                    style={
+                        "height": "30px",
+                        "margin": "0px 2px",
+                    },
+                ),
+                None,
             )
-        
+
         elif window["props"]["value"] is None and args.window is None:
             window = None
-            return html.Div(
-                dcc.Input(type="text", value=window),
-                id="input-box",
-                style={"height": "30px"},
+            return (
+                html.Div(
+                    dcc.Input(type="text", value=window),
+                    id="input-box",
+                    style={"height": "30px"},
+                ),
+                None,
             )
 
     return html.Div(
