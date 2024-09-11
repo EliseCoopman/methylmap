@@ -1,23 +1,23 @@
 ## METHYLMAP
+### EXAMPLE
 
-Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes. The tools is available through bioconda and pypi, and can be installed using the following commands:
+![GNAS methylmap](assets/1000Genomes_GNAS.png)  
+
+Methylmap is a tool for visualization of modified nucleotide frequencies for large cohort sizes, and allows for quick and easy consulting of nucleotide methylation frequencies of individuals in the 1000Genomes ONT project. 
+
+The tools is available through bioconda and pypi, and can be installed using the following commands:
 ```
 conda install -c bioconda methylmap
 pip install methylmap
 ```
 
-or through the methylmap web application at https://methylmap.bioinf.be. The methylmap web application visualizes nucleotide modification frequencies from the 1000Genomes ONT project, and allows users to upload their own data for visualization.
+or through the methylmap web application at https://methylmap.bioinf.be.
  
 If this application is useful for your research, please cite:
 https://www.biorxiv.org/content/10.1101/2022.11.28.518239v1 (methylmap)
 
 
 https://www.medrxiv.org/content/10.1101/2024.03.05.24303792v1 (the underlying 1000Genomes ONT dataset)
-
-
-### EXAMPLE
-
-![GNAS methylmap](assets/1000Genomes_GNAS.png)  
 
 ### METHYLMAP WEB APPLICATION
 #### INPUT POSSIBILITIES 
@@ -37,7 +37,7 @@ Such a table can be generated using the multiparsetable.py script, that supports
 
 - files from nanopolish (as processed by calculate_methylation_frequency.py). The methylation calls can additionally be phased using the available scripts in the "scripts" folder.
 
-#### METHYLMAP COMMAND LINE TOOL
+### METHYLMAP COMMAND LINE TOOL
 #### INPUT POSSIBILITIES
 - BAM/CRAM files with MM and ML tags. Use --files input option.
 - files from nanopolish (as processed by calculate_methylation_frequency.py). The methylation calls can additionally be phased using the available scripts in the "scripts" folder. Use --files input option.
