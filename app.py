@@ -183,8 +183,8 @@ def main():
                                                         ),
                                                         html.P(
                                                             [
-                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv or .tsv.gz file. "
-                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genmic region of interest can be generated using the ",
+                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv file. The maximum size of the file is 100MB. "
+                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genomic region of interest can be generated using the ",
                                                                 html.A(
                                                                     "multiparsetable.py script",
                                                                     href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
@@ -200,7 +200,7 @@ def main():
                                                                 ". "
                                                                 "Any remarks, issues, suggestions or questions can be uploaded in the form of an ",
                                                                 html.A(
-                                                                    "issue on the github page",
+                                                                    "issue on the github page.",
                                                                     href="https://github.com/EliseCoopman/methylmap/issues",
                                                                     target="_blank",
                                                                 ),
@@ -472,7 +472,7 @@ def main():
                                     "margin": "10px",
                                 },
                                 multiple=False,
-                                max_size=10000000,
+                                max_size=100000000,
                             ),
                             dbc.Container(
                                 children=[
