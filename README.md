@@ -60,6 +60,14 @@ path    name    group
 ```
 
 #### USAGE
+Important: When using the command line tool, data from the 1000Genomes ONT project is not available. Please use the web application for this data.
+
+Important: Adding a GFF/GTF file is required, use the --gff/--gtf option.
+
+Important: When using BAM/CRAM files as input, the --fasta option is required.
+
+Important: When perfroming hierarchical clustering, missing values are imputed using the pandas interpolate method.
+
 ```
 usage: methylmap [-h] [-f FILES [FILES ...] | -t TABLE] [-w WINDOW] [-n [NAMES ...]] --gff GFF [--output OUTPUT] [--groups [GROUPS ...]]
                  [-s] [--fasta FASTA] [--mod {m,h}] [--hapl] [--dendro] [--threads THREADS] --db DB [--quiet] [--debug] [--host HOST]
@@ -93,13 +101,6 @@ options:
   --port PORT           Port used to serve the application
   -v, --version         print version and exit
 ```
-Important: When using the command line tool, data from the 1000Genomes ONT project is not available. Please use the web application for this data.
-
-Important: Adding a GFF/GTF file is required, use the --gff/--gtf option.
-
-Important: When using BAM/CRAM files as input, the --fasta option is required.
-
-Important: When perfroming hierarchical clustering, missing values are imputed using the pandas interpolate method.
 
 
 ### MORE INFORMATION
