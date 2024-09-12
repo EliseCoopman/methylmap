@@ -771,7 +771,7 @@ def get_args():
         type=int,
         default=12,
     )
-    parser.add_argument("--db", help="use 1000Genomes data", required=True)
+    parser.add_argument("--db", help="use 1000Genomes data")
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     parser.add_argument(
         "--debug",
@@ -870,40 +870,43 @@ def Genome_browser(app, gff, genes_to_coords):
             )
         )
 
-        json_data_1000Genomes = json.loads(mod_data_1000Genomes)
-        mod_data_1000Genomes = pd.DataFrame(
-            json_data_1000Genomes["data"], columns=json_data_1000Genomes["columns"]
-        )
-        mod_data_1000Genomes.index = json_data_1000Genomes["index"]
-        fig = process_fig(
-            mod_data_1000Genomes,
-            dendro,
-            subplots,
-            num_row,
-            num_col,
-            window,
-            annotation,
-            simplify,
-            gff,
-        )
-        return (
-            html.Div(
-                dcc.Graph(
-                    figure=fig,
-                    config={
-                        "toImageButtonOptions": {
-                            "format": "png",  # one of png, svg, jpeg, webp
-                            "filename": "1000Genomesplot",
-                            "height": 800,
-                            "width": 1200,
-                            "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
-                        }
-                    },
+        if mod_data_1000Genomes is None:
+            return None, None
+        else:
+            json_data_1000Genomes = json.loads(mod_data_1000Genomes)
+            mod_data_1000Genomes = pd.DataFrame(
+                json_data_1000Genomes["data"], columns=json_data_1000Genomes["columns"]
+            )
+            mod_data_1000Genomes.index = json_data_1000Genomes["index"]
+            fig = process_fig(
+                mod_data_1000Genomes,
+                dendro,
+                subplots,
+                num_row,
+                num_col,
+                window,
+                annotation,
+                simplify,
+                gff,
+            )
+            return (
+                html.Div(
+                    dcc.Graph(
+                        figure=fig,
+                        config={
+                            "toImageButtonOptions": {
+                                "format": "png",  # one of png, svg, jpeg, webp
+                                "filename": "1000Genomesplot",
+                                "height": 800,
+                                "width": 1200,
+                                "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
+                            }
+                        },
+                    ),
+                    id="plot_1000Genomes",
                 ),
-                id="plot_1000Genomes",
-            ),
-            None,
-        )  # No error message
+                None,
+            )  # No error message
 
     return html.Div(id="plot_1000Genomes")
 
@@ -936,14 +939,17 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
         input_box_1000Genomes,
         input_box_1000Genomes2,
     ):
-        window = window_input(input_box_1000Genomes, genes_to_coords, gnas)
-        window_region = Region(window)
-        mod_data_1000Genomes = process_1000Genomes(db, window_region)
-        mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
-            level="chrom", drop=True
-        )
-        json_data_1000Genomes = mod_data_1000Genomes.to_json(orient="split")
-        return json_data_1000Genomes
+        if db is None:
+            return None
+        else:
+            window = window_input(input_box_1000Genomes, genes_to_coords, gnas)
+            window_region = Region(window)
+            mod_data_1000Genomes = process_1000Genomes(db, window_region)
+            mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
+                level="chrom", drop=True
+            )
+            json_data_1000Genomes = mod_data_1000Genomes.to_json(orient="split")
+            return json_data_1000Genomes
 
     return dcc.Store(id="intermediate-data_1000Genomes")
 
