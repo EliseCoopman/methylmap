@@ -6,3 +6,6 @@ methylmap/__pycache__/
 snakefile.smk
 README.rst
 dist/
+
+1000Genomes_ONT/1000Genomes_all.tsv.gz
+1000Genomes_ONT/1000Genomes_all.tsv.gz.tbi
