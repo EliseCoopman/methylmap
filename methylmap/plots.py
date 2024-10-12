@@ -49,7 +49,7 @@ def create_subplots(num_col, num_row):
     return fig
 
 
-def plot_methylation(subplots, meth_data, num_col, num_row):
+def plot_methylation(subplots, meth_data, num_col, num_row, color_scale):
     """Make heatmap of modification frequencies."""
 
     samplelist = list(meth_data)
@@ -57,11 +57,20 @@ def plot_methylation(subplots, meth_data, num_col, num_row):
     overviewarray = meth_data.to_numpy()
 
     fig = subplots.add_trace(
-        go.Heatmap(z=overviewarray, x=samplelist, y=positionlist), row=num_row, col=num_col
+        go.Heatmap(z=overviewarray, x=samplelist, y=positionlist),
+        row=num_row,
+        col=num_col,
     )
 
-    fig.update_yaxes(tickfont=dict(size=10), row=num_row, col=num_col, autorange="reversed")
+    fig.update_yaxes(
+        tickfont=dict(size=10), row=num_row, col=num_col, autorange="reversed"
+    )
     fig.update_xaxes(tickangle=45, tickfont=dict(size=4), row=num_row, col=num_col)
+
+    if color_scale == "discrete":
+        fig.update_traces(colorscale="Greys")
+    else:
+        fig.update_traces(colorscale="Plasma")
 
     return fig
 
@@ -86,7 +95,9 @@ def create_output(fig, outfig):
         try:
             fig.write_image(outfig)
         except ValueError as e:
-            sys.stderr.write("\n\nERROR: creating the image in this file format failed.\n")
+            sys.stderr.write(
+                "\n\nERROR: creating the image in this file format failed.\n"
+            )
             sys.stderr.write("ERROR: creating in default html format instead.\n")
             sys.stderr.write("ERROR: additional packages required. Detailed error:\n")
             sys.stderr.write(str(e))
@@ -96,5 +107,7 @@ def create_output(fig, outfig):
 def html_output(fig, outfig):
     with open(outfig, "w+") as output:
         output.write(
-            plotly.offline.plot(fig, output_type="div", show_link=False, include_plotlyjs="cdn")
+            plotly.offline.plot(
+                fig, output_type="div", show_link=False, include_plotlyjs="cdn"
+            )
         )

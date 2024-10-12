@@ -237,7 +237,7 @@ def main():
                                     dbc.Row(
                                         [
                                             dbc.Col(
-                                                html.Label("Genomic region:"), width=3
+                                                html.Label("Genomic region/Gene name:"), width=3
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -400,6 +400,32 @@ def main():
                                         ],
                                         align="center",
                                     ),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                html.Label("Color scale:"),
+                                                width=3,
+                                            ),
+                                            dbc.Col(
+                                                dcc.Dropdown(
+                                                    id="color_scale_1000Genomes",
+                                                    options=[
+                                                        {
+                                                            "label": "Continuous",
+                                                            "value": "continuous",
+                                                        },
+                                                        {
+                                                            "label": "Discrete",
+                                                            "value": "discrete",
+                                                        },
+                                                    ],
+                                                    value="continuous",
+                                                    clearable=False,
+                                                ),
+                                                width=2,
+                                            ),
+                                        ],
+                                    ),
                                 ],
                             ),
                             html.Div(
@@ -479,7 +505,8 @@ def main():
                                     dbc.Row(
                                         [
                                             dbc.Col(
-                                                html.Label("Genomic region:"), width=3
+                                                html.Label("Genomic region:"),
+                                                width=3,
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -652,6 +679,32 @@ def main():
                                             ),
                                         ],
                                         align="center",
+                                    ),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                html.Label("Color scale:"),
+                                                width=3,
+                                            ),
+                                            dbc.Col(
+                                                dcc.Dropdown(
+                                                    id="color_scale",
+                                                    options=[
+                                                        {
+                                                            "label": "Continuous",
+                                                            "value": "continuous",
+                                                        },
+                                                        {
+                                                            "label": "Discrete",
+                                                            "value": "discrete",
+                                                        },
+                                                    ],
+                                                    value="continuous",
+                                                    clearable=False,
+                                                ),
+                                                width=2,
+                                            ),
+                                        ],
                                     ),
                                 ],
                             ),
@@ -834,6 +887,7 @@ def Genome_browser(app, gff, genes_to_coords):
             Input(
                 component_id="annotation-type_1000Genomes", component_property="value"
             ),
+            Input(component_id="color_scale_1000Genomes", component_property="value"),
             Input(
                 component_id="intermediate-data_1000Genomes", component_property="data"
             ),
@@ -851,6 +905,7 @@ def Genome_browser(app, gff, genes_to_coords):
         hierarchical_clustering_1000Genomes,
         annotation_1000Genomes,
         annotation_type_1000Genomes,
+        color_scale,
         mod_data_1000Genomes,
         inputbox_1000Genomes,
     ):
@@ -888,6 +943,7 @@ def Genome_browser(app, gff, genes_to_coords):
                 annotation,
                 simplify,
                 gff,
+                color_scale
             )
             return (
                 html.Div(
@@ -1112,6 +1168,7 @@ def process_fig(
     annotation,
     simplify,
     gff,
+    color_scale,
     output=False,
 ):
     if dendro:
@@ -1119,7 +1176,7 @@ def process_fig(
         mod_data, den, list_sorted_samples = dendrogram.make_dendro(mod_data)
     if output is not False:
         mod_data.to_csv(output, sep="\t", na_rep=np.NaN, header=True)
-    fig = plots.plot_methylation(subplots, mod_data, num_col, num_row)
+    fig = plots.plot_methylation(subplots, mod_data, num_col, num_row, color_scale)
     if annotation:
         window = Region(window)
         annotation_traces = annot.gff_annotation(gff, window, simplify)
@@ -1209,6 +1266,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
             Input(component_id="hierarchical_clustering", component_property="value"),
             Input(component_id="annotation", component_property="value"),
             Input(component_id="annotation-type", component_property="value"),
+            Input(component_id="color_scale", component_property="value"),
             Input(component_id="intermediate-data", component_property="data"),
         ],
         [
@@ -1241,6 +1299,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                     hierarchical_clustering,
                     annotation,
                     annotation_type,
+                    color_scale,
                     args.window,
                     genes_to_coords,
                 )
@@ -1266,6 +1325,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                 annotation,
                 simplify,
                 gff,
+                color_scale,
                 args.output,
             )
             return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
