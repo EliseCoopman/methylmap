@@ -1282,6 +1282,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
         hierarchical_clustering,
         annotation,
         annotation_type,
+        color_scale,
         mod_data,
         input_box,
     ):
@@ -1299,7 +1300,6 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                     hierarchical_clustering,
                     annotation,
                     annotation_type,
-                    color_scale,
                     args.window,
                     genes_to_coords,
                 )
@@ -1372,15 +1372,25 @@ def validate_input(input_text):
 
 def make_gene_to_coords_dict(gff_file):
     genes_to_coords = {}
-    for line in gzip.open(gff_file, "rt"):
-        if line.startswith("#"):
-            continue
-        fields = line.rstrip().split("\t")
-        if fields[2] == "gene":
-            name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
-                0
-            ].split("=")[1]
-            genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
+    
+    # Determine if the file is gzipped based on its extension
+    if gff_file.endswith(".gz"):
+        open_func = gzip.open
+        mode = "rt"
+    else:
+        open_func = open
+        mode = "r"
+    
+    # Read the file using the appropriate function
+    with open_func(gff_file, mode) as file:
+        for line in file:
+            if line.startswith("#"):
+                continue
+            fields = line.rstrip().split("\t")
+            if fields[2] == "gene":
+                name = [f for f in fields[8].split(";") if f.startswith("gene_name")][0].split("=")[1]
+                genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
+    
     return genes_to_coords
 
 

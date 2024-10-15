@@ -28,16 +28,22 @@ def annot_file_type(annot_file):
     """
     Figure out type of annotation file.
     """
-    if annot_file.endswith((".gtf", ".gtf.gz")):
+    if annot_file.endswith((".gtf.gz")):
         return "gtf"
     elif annot_file.endswith(
-        (".gff", ".gff.gz", ".gff2", ".gff2.gz", ".gff3", ".gff3.gz")
+        (".gff.gz",".gff2.gz", ".gff3.gz")
     ):
         return "gff"
+    elif annot_file.endswith((".gtf",".gff",".gff2",".gff3")):
+        logging.error("Annotation file not bgzipped.")
+        sys.exit(
+            "ERROR: annotation file not bgzipped.\n"
+        )
     else:
+        logging.error("Unrecognized extension of the annotation file. Supported are gtf.gz, gff.gz, gff2.gz, and gff3.gz")
         sys.exit(
             "ERROR: unrecognized extension of the annotation file.\n"
-            "Supported are gtf, gtf.gz, gff, gff.gz, gff2, gff2.gz, gff3 and gff3.gz"
+            "Supported are gtf.gz, gff.gz, gff2.gz, and gff3.gz"
         )
 
 
