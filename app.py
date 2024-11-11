@@ -13,6 +13,7 @@ import sys
 import json
 import logging
 import gzip
+import pysam
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
@@ -237,13 +238,14 @@ def main():
                                     dbc.Row(
                                         [
                                             dbc.Col(
-                                                html.Label("Genomic region/Gene name:"), width=3
+                                                html.Label("Genomic region/Gene name:"),
+                                                width=3,
                                             ),
                                             dbc.Col(
                                                 html.Div(
                                                     [
                                                         input_box_genomebrowser(
-                                                            app, genes_to_coords
+                                                            app, genes_to_coords, args
                                                         ),
                                                         html.Button(
                                                             id="confirm-button_1000Genomes",
@@ -411,15 +413,19 @@ def main():
                                                     id="color_scale_1000Genomes",
                                                     options=[
                                                         {
-                                                            "label": "Continuous",
-                                                            "value": "continuous",
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
                                                         },
                                                         {
-                                                            "label": "Discrete",
-                                                            "value": "discrete",
+                                                            "label": "Greys",
+                                                            "value": "greys",
+                                                        },
+                                                        {
+                                                            "label": "Plasma",
+                                                            "value": "plasma",
                                                         },
                                                     ],
-                                                    value="continuous",
+                                                    value="plasma",
                                                     clearable=False,
                                                 ),
                                                 width=2,
@@ -431,8 +437,8 @@ def main():
                             html.Div(
                                 id="error-message_1000Genomes", style={"color": "red"}
                             ),
-                            Genome_browser(app, gff, genes_to_coords),
-                            dcc_store_genome_browser(app, db, genes_to_coords),
+                            Genome_browser(args, app, gff, genes_to_coords),
+                            dcc_store_genome_browser(app, db, genes_to_coords, args),
                         ],
                     ),
                     dcc.Tab(
@@ -679,7 +685,7 @@ def main():
                                         ],
                                         align="center",
                                     ),
-                                dbc.Row(
+                                    dbc.Row(
                                         [
                                             dbc.Col(
                                                 html.Label("Color scale:"),
@@ -690,15 +696,19 @@ def main():
                                                     id="color_scale",
                                                     options=[
                                                         {
-                                                            "label": "Continuous",
-                                                            "value": "continuous",
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
                                                         },
                                                         {
-                                                            "label": "Discrete",
-                                                            "value": "discrete",
+                                                            "label": "Greys",
+                                                            "value": "greys",
+                                                        },
+                                                        {
+                                                            "label": "Plasma",
+                                                            "value": "plasma",
                                                         },
                                                     ],
-                                                    value="continuous",
+                                                    value="plasma",
                                                     clearable=False,
                                                 ),
                                                 width=2,
@@ -860,7 +870,7 @@ def get_args():
     return args
 
 
-def Genome_browser(app, gff, genes_to_coords):
+def Genome_browser(args, app, gff, genes_to_coords):
     gnas = "chr20:58839718-58911192"
 
     @app.callback(
@@ -910,6 +920,7 @@ def Genome_browser(app, gff, genes_to_coords):
     ):
         window, dendro, annotation, simplify, num_row, num_col, subplots = (
             browser_information(
+                args,
                 button_confirm_1000Genomes,
                 button_o3_1000Genomes,
                 button_o10_1000Genomes,
@@ -963,7 +974,7 @@ def Genome_browser(app, gff, genes_to_coords):
     return html.Div(id="plot_1000Genomes")
 
 
-def dcc_store_genome_browser(app, db, genes_to_coords):
+def dcc_store_genome_browser(app, db, genes_to_coords, args):
     gnas = "chr20:58839718-58911192"
 
     @app.callback(
@@ -991,7 +1002,7 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
         input_box_1000Genomes,
         input_box_1000Genomes2,
     ):
-        window = window_input(input_box_1000Genomes, genes_to_coords, gnas)
+        window = window_input_1000Genomes(args, input_box_1000Genomes, genes_to_coords, gnas)
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
         mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
@@ -1003,7 +1014,7 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
     return dcc.Store(id="intermediate-data_1000Genomes")
 
 
-def input_box_genomebrowser(app, genes_to_coords):
+def input_box_genomebrowser(app, genes_to_coords, args):
     gnas_region = "chr20:58,839,718-58,911,192"
 
     @app.callback(
@@ -1032,7 +1043,7 @@ def input_box_genomebrowser(app, genes_to_coords):
         window,
     ):
         window = window["props"]["value"] if window else gnas_region
-        if not validate_input(window):
+        if not validate_input_1000Genomes(window, args):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
             window = window.upper()
             coords = genes_to_coords.get(window)
@@ -1044,7 +1055,7 @@ def input_box_genomebrowser(app, genes_to_coords):
                         id="input-box_1000Genomes",
                         style={"height": "30px", "margin": "0px 2px"},
                     ),
-                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
                 window = coords
@@ -1074,8 +1085,185 @@ def input_box_genomebrowser(app, genes_to_coords):
     )
 
 
+def process_fig(
+    mod_data,
+    dendro,
+    subplots,
+    num_row,
+    num_col,
+    window,
+    annotation,
+    simplify,
+    gff,
+    color_scale,
+    output=False,
+):
+    if dendro:
+        logging.info("Performing hierarchical clustering")
+        mod_data, den, list_sorted_samples = dendrogram.make_dendro(mod_data)
+    if output is not False:
+        mod_data.to_csv(output, sep="\t", na_rep=np.NaN, header=True)
+    fig = plots.plot_methylation(subplots, mod_data, num_col, num_row, color_scale)
+    if annotation:
+        window = Region(window)
+        annotation_traces = annot.gff_annotation(gff, window, simplify)
+        for annot_trace in annotation_traces:
+            fig.append_trace(trace=annot_trace, row=num_row, col=1)
+        fig.update_xaxes(
+            title_text="", showticklabels=False, zeroline=False, row=num_row, col=1
+        )
+        fig.update_yaxes(
+            title_text="", showticklabels=True, zeroline=False, row=num_row, col=1
+        )
+    if dendro:
+        for trace in den.select_traces():
+            fig.add_trace(trace, row=1, col=num_col)
+        fig.update_xaxes(
+            title_text="",
+            showticklabels=False,
+            zeroline=False,
+            showgrid=False,
+            row=1,
+            col=num_col,
+        )
+        fig.update_yaxes(
+            title_text="",
+            showticklabels=False,
+            zeroline=False,
+            showgrid=False,
+            row=1,
+            col=num_col,
+        )
+        fig.update_layout(showlegend=False)
+        fig["data"][0]["x"] = den.layout.xaxis.tickvals
+
+        dendro_xaxis = "xaxis4" if annotation else "xaxis2"
+        fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
+        fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
+    return fig
+
+
+def browser_information(
+    args,
+    button_confirm,
+    button_o3,
+    button_o10,
+    button_i3,
+    button_i10,
+    input_box,
+    hierarchical_clustering,
+    annotation,
+    annotation_type,
+    windowregion,
+    genes_to_coords,
+):
+    # Validate the input format
+    if windowregion is None and input_box["props"]["value"] is None:
+        return None, None, None, None, None, None, None
+    window = window_input_1000Genomes(args, input_box, genes_to_coords, windowregion)
+    # Convert checklist values to boolean flags
+    dendro = "on" in hierarchical_clustering
+    annotation = "on" in annotation
+    if annotation:
+        if annotation_type == "gene":
+            simplify = True
+        if annotation_type == "transcript":
+            simplify = False
+    if not annotation:
+        simplify = False
+
+    num_row = 2 if dendro else 1
+    num_col = 2 if annotation else 1
+
+    subplots = plots.create_subplots(num_col, num_row)
+    return window, dendro, annotation, simplify, num_row, num_col, subplots
+
+
 def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=None):
     return read_mods(args, window, upload_data, filename, last_modified)
+
+
+def meth_browser(app, args, gff_file, genes_to_coords):
+    @app.callback(
+        [
+            Output(component_id="plot", component_property="children"),
+            Output(component_id="error-message", component_property="children"),
+        ],
+        [
+            Input(component_id="confirm-button", component_property="n_clicks"),
+            Input(component_id="button-o3", component_property="n_clicks"),
+            Input(component_id="button-o10", component_property="n_clicks"),
+            Input(component_id="button-i3", component_property="n_clicks"),
+            Input(component_id="button-i10", component_property="n_clicks"),
+            Input(component_id="hierarchical_clustering", component_property="value"),
+            Input(component_id="annotation", component_property="value"),
+            Input(component_id="annotation-type", component_property="value"),
+            Input(component_id="color_scale", component_property="value"),
+            Input(component_id="intermediate-data", component_property="data"),
+        ],
+        [
+            State(component_id="input-box", component_property="children"),
+        ],
+    )
+    def update_meth_browser(
+        button_confirm,
+        button_o3,
+        button_o10,
+        button_i3,
+        button_i10,
+        hierarchical_clustering,
+        annotation,
+        annotation_type,
+        color_scale,
+        mod_data,
+        input_box,
+    ):
+        if input_box["props"]["value"] is None and mod_data is None:
+            return None, None
+        else:
+            window, dendro, annotation, simplify, num_row, num_col, subplots = (
+                browser_information(
+                    args,
+                    button_confirm,
+                    button_o3,
+                    button_o10,
+                    button_i3,
+                    button_i10,
+                    input_box,
+                    hierarchical_clustering,
+                    annotation,
+                    annotation_type,
+                    args.window,
+                    genes_to_coords,
+                )
+            )
+        if num_row is None and num_col is None:
+            return None, None
+        else:
+
+            json_data = json.loads(mod_data)
+            mod_data = pd.DataFrame(json_data["data"], columns=json_data["columns"])
+            mod_data.index = json_data["index"]
+            if args.gff:
+                gff = args.gff
+            else:
+                gff = gff_file
+            fig = process_fig(
+                mod_data,
+                dendro,
+                subplots,
+                num_row,
+                num_col,
+                window,
+                annotation,
+                simplify,
+                gff,
+                color_scale,
+                args.output,
+            )
+            return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
+
+    return html.Div(id="plot")
 
 
 def dcc_store(app, args, genes_to_coords):
@@ -1151,181 +1339,6 @@ def dcc_store(app, args, genes_to_coords):
     return html.Div([dcc.Store(id="intermediate-data")])
 
 
-def process_fig(
-    mod_data,
-    dendro,
-    subplots,
-    num_row,
-    num_col,
-    window,
-    annotation,
-    simplify,
-    gff,
-    color_scale,
-    output=False,
-):
-    if dendro:
-        logging.info("Performing hierarchical clustering")
-        mod_data, den, list_sorted_samples = dendrogram.make_dendro(mod_data)
-    if output is not False:
-        mod_data.to_csv(output, sep="\t", na_rep=np.NaN, header=True)
-    fig = plots.plot_methylation(subplots, mod_data, num_col, num_row, color_scale)
-    if annotation:
-        window = Region(window)
-        annotation_traces = annot.gff_annotation(gff, window, simplify)
-        for annot_trace in annotation_traces:
-            fig.append_trace(trace=annot_trace, row=num_row, col=1)
-        fig.update_xaxes(
-            title_text="", showticklabels=False, zeroline=False, row=num_row, col=1
-        )
-        fig.update_yaxes(
-            title_text="", showticklabels=True, zeroline=False, row=num_row, col=1
-        )
-    if dendro:
-        for trace in den.select_traces():
-            fig.add_trace(trace, row=1, col=num_col)
-        fig.update_xaxes(
-            title_text="",
-            showticklabels=False,
-            zeroline=False,
-            showgrid=False,
-            row=1,
-            col=num_col,
-        )
-        fig.update_yaxes(
-            title_text="",
-            showticklabels=False,
-            zeroline=False,
-            showgrid=False,
-            row=1,
-            col=num_col,
-        )
-        fig.update_layout(showlegend=False)
-        fig["data"][0]["x"] = den.layout.xaxis.tickvals
-
-        dendro_xaxis = "xaxis4" if annotation else "xaxis2"
-        fig["layout"][dendro_xaxis]["tickvals"] = den.layout.xaxis.tickvals
-        fig["layout"][dendro_xaxis]["ticktext"] = list_sorted_samples
-    return fig
-
-
-def browser_information(
-    button_confirm,
-    button_o3,
-    button_o10,
-    button_i3,
-    button_i10,
-    input_box,
-    hierarchical_clustering,
-    annotation,
-    annotation_type,
-    windowregion,
-    genes_to_coords,
-):
-    # Validate the input format
-    if windowregion is None and input_box["props"]["value"] is None:
-        return None, None, None, None, None, None, None
-    window = window_input(input_box, genes_to_coords, windowregion)
-    # Convert checklist values to boolean flags
-    dendro = "on" in hierarchical_clustering
-    annotation = "on" in annotation
-    if annotation:
-        if annotation_type == "gene":
-            simplify = True
-        if annotation_type == "transcript":
-            simplify = False
-    if not annotation:
-        simplify = False
-
-    num_row = 2 if dendro else 1
-    num_col = 2 if annotation else 1
-
-    subplots = plots.create_subplots(num_col, num_row)
-    return window, dendro, annotation, simplify, num_row, num_col, subplots
-
-
-def meth_browser(app, args, gff_file, genes_to_coords):
-    @app.callback(
-        [
-            Output(component_id="plot", component_property="children"),
-            Output(component_id="error-message", component_property="children"),
-        ],
-        [
-            Input(component_id="confirm-button", component_property="n_clicks"),
-            Input(component_id="button-o3", component_property="n_clicks"),
-            Input(component_id="button-o10", component_property="n_clicks"),
-            Input(component_id="button-i3", component_property="n_clicks"),
-            Input(component_id="button-i10", component_property="n_clicks"),
-            Input(component_id="hierarchical_clustering", component_property="value"),
-            Input(component_id="annotation", component_property="value"),
-            Input(component_id="annotation-type", component_property="value"),
-            Input(component_id="color_scale", component_property="value"),
-            Input(component_id="intermediate-data", component_property="data"),
-        ],
-        [
-            State(component_id="input-box", component_property="children"),
-        ],
-    )
-    def update_meth_browser(
-        button_confirm,
-        button_o3,
-        button_o10,
-        button_i3,
-        button_i10,
-        hierarchical_clustering,
-        annotation,
-        annotation_type,
-        color_scale,
-        mod_data,
-        input_box,
-    ):
-        if input_box["props"]["value"] is None and mod_data is None:
-            return None, None
-        else:
-            window, dendro, annotation, simplify, num_row, num_col, subplots = (
-                browser_information(
-                    button_confirm,
-                    button_o3,
-                    button_o10,
-                    button_i3,
-                    button_i10,
-                    input_box,
-                    hierarchical_clustering,
-                    annotation,
-                    annotation_type,
-                    args.window,
-                    genes_to_coords,
-                )
-            )
-        if num_row is None and num_col is None:
-            return None, None
-        else:
-
-            json_data = json.loads(mod_data)
-            mod_data = pd.DataFrame(json_data["data"], columns=json_data["columns"])
-            mod_data.index = json_data["index"]
-            if args.gff:
-                gff = args.gff
-            else:
-                gff = gff_file
-            fig = process_fig(
-                mod_data,
-                dendro,
-                subplots,
-                num_row,
-                num_col,
-                window,
-                annotation,
-                simplify,
-                gff,
-                color_scale,
-                args.output,
-            )
-            return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
-
-    return html.Div(id="plot")
-
-
 def window_input(input_box, genes_to_coords, window):
     if input_box["props"]["value"] is None and window is None:
         window = None
@@ -1341,7 +1354,30 @@ def window_input(input_box, genes_to_coords, window):
             if not coords:
                 return (
                     "error",
-                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
+            else:
+                window_input = coords
+
+    return window_input
+
+
+def window_input_1000Genomes(args, input_box, genes_to_coords, window):
+    if input_box["props"]["value"] is None and window is None:
+        window = None
+    else:
+        window_input = input_box["props"]["value"] if input_box else window
+        if not validate_input_1000Genomes(window_input,args):
+            # if the input is not in the correct format to be coordinates, check if it is a gene name
+            window_input = (
+                window_input.upper()
+            )  # make sure the gene name is in uppercase
+            coords = genes_to_coords.get(window_input)
+
+            if not coords:
+                return (
+                    "error",
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
                 window_input = coords
@@ -1360,6 +1396,37 @@ def validate_input(input_text):
     ):
         return True
     else:
+        return False
+
+
+def validate_input_1000Genomes(input_text,args):
+    db = args.db
+    tbi_file = db + ".tbi"
+    if not os.path.exists(tbi_file):
+        sys.exit(f"ERROR: {tbi_file} 1000Genomes --db input not found")
+    tabix_file = pysam.TabixFile(db)
+    input_text = input_text.replace(",", "")
+    if ":" not in input_text or "-" not in input_text:
+        return False
+    chrom, positions = input_text.split(":")
+    start, end = map(int, positions.split("-"))
+
+    # Set to hold valid chromosome names
+    valid_chromosomes = set()
+    # Fetch the first line of each chromosome (using fetch to get valid chromosomes)
+    for chromosome in tabix_file.contigs:
+        valid_chromosomes.add(chromosome)
+    if chrom not in valid_chromosomes:
+        return False  # Invalid chromosome
+
+    # Fetch the region using tabix, and check if any data is returned
+    try:
+        records = tabix_file.fetch(chrom, start, end)
+        for record in records:
+            return True  # If any record is found in the range, the input is valid
+        return False  # No records found in the range
+    except ValueError:
+        # Handle case where chromosome or range isn't valid in the tabix file
         return False
 
 
@@ -1415,7 +1482,7 @@ def input_box(app, args, genes_to_coords):
                             id="input-box",
                             style={"height": "30px", "margin": "0px 2px"},
                         ),
-                        "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                     )
                 else:
                     window = coords
