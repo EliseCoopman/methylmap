@@ -66,11 +66,12 @@ def plot_methylation(subplots, meth_data, num_col, num_row, color_scale):
         tickfont=dict(size=10), row=num_row, col=num_col, autorange="reversed"
     )
     fig.update_xaxes(tickangle=45, tickfont=dict(size=4), row=num_row, col=num_col)
-
-    if color_scale == "discrete":
-        fig.update_traces(colorscale="Greys")
-    else:
-        fig.update_traces(colorscale="Plasma")
+    cmaps = {
+        "plasma": "Plasma",
+        "greys": "Greys",
+        "bluered": "Bluered"
+    }
+    fig.update_traces(colorscale=cmaps.get(color_scale, "Plasma"))
 
     return fig
 

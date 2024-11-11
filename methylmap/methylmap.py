@@ -411,15 +411,19 @@ def main():
                                                     id="color_scale_1000Genomes",
                                                     options=[
                                                         {
-                                                            "label": "Continuous",
-                                                            "value": "continuous",
+                                                            "label": "Default",
+                                                            "value": "default",
                                                         },
                                                         {
-                                                            "label": "Discrete",
-                                                            "value": "discrete",
+                                                            "label": "Plasma",
+                                                            "value": "plasma",
                                                         },
+                                                        {
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
+                                                        }
                                                     ],
-                                                    value="continuous",
+                                                    value="default",
                                                     clearable=False,
                                                 ),
                                                 width=2,
@@ -691,15 +695,19 @@ def main():
                                                     id="color_scale",
                                                     options=[
                                                         {
-                                                            "label": "Continuous",
-                                                            "value": "continuous",
+                                                            "label": "Default",
+                                                            "value": "default",
                                                         },
                                                         {
-                                                            "label": "Discrete",
-                                                            "value": "discrete",
+                                                            "label": "Plasma",
+                                                            "value": "plasma",
                                                         },
+                                                        {
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
+                                                        }
                                                     ],
-                                                    value="continuous",
+                                                    value="default",
                                                     clearable=False,
                                                 ),
                                                 width=2,
