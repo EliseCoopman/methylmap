@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import json
+import glob
 import logging
 import gzip
 import pysam
@@ -33,6 +34,17 @@ def main():
         handlers=[logging.StreamHandler()],
     )
     args = get_args()
+    annotation_dir = args.annotationdir
+    file_paths = glob.glob(os.path.join(annotation_dir, "*_sorted.gff3.gz"))
+    formatted_list = []
+    for file_path in file_paths:
+        file_name = os.path.basename(file_path).replace("_sorted.gff3.gz", "")
+        entry = {
+            "label": file_name.capitalize(),  # Capitalize first letter
+            "value": file_name,
+        }
+        formatted_list.append(entry)
+
     db = args.db
     gff = args.gff
     genes_to_coords = make_gene_to_coords_dict(gff)
@@ -615,10 +627,32 @@ def main():
                                                     value="off",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                         ],
                                         align="center",
+                                    ),
+                                    html.Div(
+                                        id="annotation-file-container",
+                                        children=[
+                                            dbc.Row(
+                                                [
+                                                    dbc.Col(
+                                                        html.Label("Annotation file:"),
+                                                        width=3,
+                                                    ),
+                                                    dbc.Col(
+                                                        dcc.Dropdown(
+                                                            id="annotation-file",
+                                                            options=formatted_list,
+                                                            clearable=False,
+                                                        ),
+                                                        width=5,
+                                                    ),
+                                                ],
+                                                align="center",
+                                            ),
+                                        ],
                                     ),
                                     html.Div(
                                         id="annotation-type-container",
@@ -645,7 +679,7 @@ def main():
                                                             value="gene",
                                                             clearable=False,
                                                         ),
-                                                        width=2,
+                                                        width=5,
                                                     ),
                                                 ],
                                                 align="center",
@@ -674,7 +708,7 @@ def main():
                                                     value="off",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -711,7 +745,7 @@ def main():
                                                     value="plasma",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                         ],
                                     ),
@@ -721,7 +755,9 @@ def main():
                                 id="error-message",
                                 style={"color": "red"},
                             ),
-                            meth_browser(app, args, gff, genes_to_coords),
+                            meth_browser(
+                                app, args, gff, genes_to_coords, annotation_dir
+                            ),
                             dcc_store(app, args, genes_to_coords),
                         ],
                     ),
@@ -745,6 +781,15 @@ def main():
     )
     def toggle_annotation_type_visibility(annotation_1000Genomes):
         if "on" in annotation_1000Genomes:
+            return {"display": "block"}
+        else:
+            return {"display": "none"}
+
+    @app.callback(
+        Output("annotation-file-container", "style"), Input("annotation", "value")
+    )
+    def toggle_annotation_file_visibility(annotation):
+        if "on" in annotation:
             return {"display": "block"}
         else:
             return {"display": "none"}
@@ -834,6 +879,11 @@ def get_args():
         default=12,
     )
     parser.add_argument("--db", help="use 1000Genomes data", required=True)
+    parser.add_argument(
+        "--annotationdir",
+        required=True,
+        help="directory with annotation files",
+    )
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     parser.add_argument(
         "--debug",
@@ -950,7 +1000,7 @@ def Genome_browser(args, app, gff, genes_to_coords):
             annotation,
             simplify,
             gff,
-            color_scale
+            color_scale,
         )
         return (
             html.Div(
@@ -1002,7 +1052,9 @@ def dcc_store_genome_browser(app, db, genes_to_coords, args):
         input_box_1000Genomes,
         input_box_1000Genomes2,
     ):
-        window = window_input_1000Genomes(args, input_box_1000Genomes, genes_to_coords, gnas)
+        window = window_input_1000Genomes(
+            args, input_box_1000Genomes, genes_to_coords, gnas
+        )
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
         mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
@@ -1183,7 +1235,7 @@ def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=N
     return read_mods(args, window, upload_data, filename, last_modified)
 
 
-def meth_browser(app, args, gff_file, genes_to_coords):
+def meth_browser(app, args, gff_file, genes_to_coords, annotation_dir):
     @app.callback(
         [
             Output(component_id="plot", component_property="children"),
@@ -1196,7 +1248,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
             Input(component_id="hierarchical_clustering", component_property="value"),
-            Input(component_id="annotation", component_property="value"),
+            Input(component_id="annotation-file", component_property="value"),
             Input(component_id="annotation-type", component_property="value"),
             Input(component_id="color_scale", component_property="value"),
             Input(component_id="intermediate-data", component_property="data"),
@@ -1212,12 +1264,20 @@ def meth_browser(app, args, gff_file, genes_to_coords):
         button_i3,
         button_i10,
         hierarchical_clustering,
-        annotation,
+        annotation_file,
         annotation_type,
         color_scale,
         mod_data,
         input_box,
     ):
+        if annotation_file is None:
+            annotation = "off"
+            gff = None
+        else:
+            annotation = "on"
+            gff = annotation_dir + "/" + annotation_file + "_sorted.gff3.gz"
+            print(gff)
+
         if input_box["props"]["value"] is None and mod_data is None:
             return None, None
         else:
@@ -1244,10 +1304,10 @@ def meth_browser(app, args, gff_file, genes_to_coords):
             json_data = json.loads(mod_data)
             mod_data = pd.DataFrame(json_data["data"], columns=json_data["columns"])
             mod_data.index = json_data["index"]
-            if args.gff:
-                gff = args.gff
-            else:
-                gff = gff_file
+            # if args.gff:
+            #     gff = args.gff
+            # else:
+            #     gff = gff_file
             fig = process_fig(
                 mod_data,
                 dendro,
@@ -1320,7 +1380,6 @@ def dcc_store(app, args, genes_to_coords):
             mod_data.set_index("position", inplace=True)
             json_data = mod_data.to_json(orient="split")
             return json_data, None
-
         else:
             window = window_input(input_box, genes_to_coords, args.window)
             window_region = Region(window)
@@ -1367,7 +1426,7 @@ def window_input_1000Genomes(args, input_box, genes_to_coords, window):
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
-        if not validate_input_1000Genomes(window_input,args):
+        if not validate_input_1000Genomes(window_input, args):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
             window_input = (
                 window_input.upper()
@@ -1399,7 +1458,7 @@ def validate_input(input_text):
         return False
 
 
-def validate_input_1000Genomes(input_text,args):
+def validate_input_1000Genomes(input_text, args):
     db = args.db
     tbi_file = db + ".tbi"
     if not os.path.exists(tbi_file):
