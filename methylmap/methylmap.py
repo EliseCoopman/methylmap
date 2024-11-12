@@ -183,8 +183,8 @@ def main():
                                                         ),
                                                         html.P(
                                                             [
-                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv or .tsv.gz file. "
-                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genmic region of interest can be generated using the ",
+                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv file. The maximum size of the file is 100MB. "
+                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genomic region of interest can be generated using the ",
                                                                 html.A(
                                                                     "multiparsetable.py script",
                                                                     href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
@@ -200,7 +200,7 @@ def main():
                                                                 ". "
                                                                 "Any remarks, issues, suggestions or questions can be uploaded in the form of an ",
                                                                 html.A(
-                                                                    "issue on the github page",
+                                                                    "issue on the github page.",
                                                                     href="https://github.com/EliseCoopman/methylmap/issues",
                                                                     target="_blank",
                                                                 ),
@@ -237,7 +237,8 @@ def main():
                                     dbc.Row(
                                         [
                                             dbc.Col(
-                                                html.Label("Genomic region/Gene name:"), width=3
+                                                html.Label("Genomic region/Gene name:"),
+                                                width=3,
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -411,19 +412,19 @@ def main():
                                                     id="color_scale_1000Genomes",
                                                     options=[
                                                         {
-                                                            "label": "Default",
-                                                            "value": "default",
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
+                                                        },
+                                                        {
+                                                            "label": "Greys",
+                                                            "value": "greys",
                                                         },
                                                         {
                                                             "label": "Plasma",
                                                             "value": "plasma",
                                                         },
-                                                        {
-                                                            "label": "BlueRed",
-                                                            "value": "bluered",
-                                                        }
                                                     ],
-                                                    value="default",
+                                                    value="plasma",
                                                     clearable=False,
                                                 ),
                                                 width=2,
@@ -502,15 +503,14 @@ def main():
                                     "margin": "10px",
                                 },
                                 multiple=False,
-                                max_size=10000000,
+                                max_size=100000000,
                             ),
                             dbc.Container(
                                 children=[
                                     dbc.Row(
                                         [
                                             dbc.Col(
-                                                html.Label("Genomic region:"),
-                                                width=3,
+                                                html.Label("Genomic region:"), width=3
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -614,7 +614,7 @@ def main():
                                                     value="off",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                         ],
                                         align="center",
@@ -644,7 +644,7 @@ def main():
                                                             value="gene",
                                                             clearable=False,
                                                         ),
-                                                        width=2,
+                                                        width=5,
                                                     ),
                                                 ],
                                                 align="center",
@@ -673,7 +673,7 @@ def main():
                                                     value="off",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -695,22 +695,22 @@ def main():
                                                     id="color_scale",
                                                     options=[
                                                         {
-                                                            "label": "Default",
-                                                            "value": "default",
+                                                            "label": "BlueRed",
+                                                            "value": "bluered",
+                                                        },
+                                                        {
+                                                            "label": "Greys",
+                                                            "value": "greys",
                                                         },
                                                         {
                                                             "label": "Plasma",
                                                             "value": "plasma",
                                                         },
-                                                        {
-                                                            "label": "BlueRed",
-                                                            "value": "bluered",
-                                                        }
                                                     ],
-                                                    value="default",
+                                                    value="plasma",
                                                     clearable=False,
                                                 ),
-                                                width=2,
+                                                width=5,
                                             ),
                                         ],
                                     ),
@@ -720,7 +720,9 @@ def main():
                                 id="error-message",
                                 style={"color": "red"},
                             ),
-                            meth_browser(app, args, gff, genes_to_coords),
+                            meth_browser(
+                                app, args, gff, genes_to_coords
+                                ),
                             dcc_store(app, args, genes_to_coords),
                         ],
                     ),
@@ -1006,7 +1008,9 @@ def dcc_store_genome_browser(app, db, genes_to_coords):
         if db is None:
             return None
         else:
-            window = window_input(input_box_1000Genomes, genes_to_coords, gnas)
+            window = window_input(
+                input_box_1000Genomes, genes_to_coords, gnas
+            )
             window_region = Region(window)
             mod_data_1000Genomes = process_1000Genomes(db, window_region)
             mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
@@ -1059,7 +1063,7 @@ def input_box_genomebrowser(app, genes_to_coords):
                         id="input-box_1000Genomes",
                         style={"height": "30px", "margin": "0px 2px"},
                     ),
-                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
                 window = coords
@@ -1087,83 +1091,6 @@ def input_box_genomebrowser(app, genes_to_coords):
         id="input-box_1000Genomes",
         style={"height": "30px", "margin": "0px 2px"},
     )
-
-
-def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=None):
-    return read_mods(args, window, upload_data, filename, last_modified)
-
-
-def dcc_store(app, args, genes_to_coords):
-
-    @app.callback(
-        [
-            Output(component_id="intermediate-data", component_property="data"),
-            Output(
-                component_id="error-message-uploadowndata",
-                component_property="children",
-            ),
-        ],
-        [
-            Input(component_id="confirm-button", component_property="n_clicks"),
-            Input(component_id="button-o3", component_property="n_clicks"),
-            Input(component_id="button-o10", component_property="n_clicks"),
-            Input(component_id="button-i3", component_property="n_clicks"),
-            Input(component_id="button-i10", component_property="n_clicks"),
-            Input(component_id="upload-data", component_property="contents"),
-            Input(component_id="input-box", component_property="children"),
-        ],
-        [
-            State(component_id="input-box", component_property="children"),
-            State(component_id="upload-data", component_property="filename"),
-            State(component_id="upload-data", component_property="last_modified"),
-        ],
-    )
-    def generate_data(
-        confirm_button,
-        button_o3,
-        button_o10,
-        button_i3,
-        button_i10,
-        upload_data,
-        input_box,
-        input_box_2,
-        filename,
-        last_modified,
-    ):
-        if (
-            input_box["props"]["value"] is None
-            and args.table is None
-            and args.files is None
-            and upload_data is None
-        ):
-            return None, None
-        if input_box["props"]["value"] is None and upload_data is not None:
-            args_False = False
-            window = None
-            mod_data = mod_freq_data(
-                args_False, window, upload_data, filename, last_modified
-            )
-            mod_data.drop(columns=["chrom"], inplace=True)
-            mod_data.set_index("position", inplace=True)
-            json_data = mod_data.to_json(orient="split")
-            return json_data, None
-
-        else:
-            window = window_input(input_box, genes_to_coords, args.window)
-            window_region = Region(window)
-            if upload_data is None:
-                mod_data = mod_freq_data(args, window_region)
-                mod_data = mod_data.reset_index(level="chrom", drop=True)
-                json_data = mod_data.to_json(orient="split")
-            elif upload_data is not None:
-                args_False = False
-                mod_data = mod_freq_data(
-                    args_False, window_region, upload_data, filename, last_modified
-                )
-                json_data = mod_data.to_json(orient="split")
-            return json_data, None
-
-    return html.Div([dcc.Store(id="intermediate-data")])
 
 
 def process_fig(
@@ -1259,6 +1186,10 @@ def browser_information(
     return window, dendro, annotation, simplify, num_row, num_col, subplots
 
 
+def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=None):
+    return read_mods(args, window, upload_data, filename, last_modified)
+
+
 def meth_browser(app, args, gff_file, genes_to_coords):
     @app.callback(
         [
@@ -1341,6 +1272,78 @@ def meth_browser(app, args, gff_file, genes_to_coords):
     return html.Div(id="plot")
 
 
+def dcc_store(app, args, genes_to_coords):
+
+    @app.callback(
+        [
+            Output(component_id="intermediate-data", component_property="data"),
+            Output(
+                component_id="error-message-uploadowndata",
+                component_property="children",
+            ),
+        ],
+        [
+            Input(component_id="confirm-button", component_property="n_clicks"),
+            Input(component_id="button-o3", component_property="n_clicks"),
+            Input(component_id="button-o10", component_property="n_clicks"),
+            Input(component_id="button-i3", component_property="n_clicks"),
+            Input(component_id="button-i10", component_property="n_clicks"),
+            Input(component_id="upload-data", component_property="contents"),
+            Input(component_id="input-box", component_property="children"),
+        ],
+        [
+            State(component_id="input-box", component_property="children"),
+            State(component_id="upload-data", component_property="filename"),
+            State(component_id="upload-data", component_property="last_modified"),
+        ],
+    )
+    def generate_data(
+        confirm_button,
+        button_o3,
+        button_o10,
+        button_i3,
+        button_i10,
+        upload_data,
+        input_box,
+        input_box_2,
+        filename,
+        last_modified,
+    ):
+        if (
+            input_box["props"]["value"] is None
+            and args.table is None
+            and args.files is None
+            and upload_data is None
+        ):
+            return None, None
+        if input_box["props"]["value"] is None and upload_data is not None:
+            args_False = False
+            window = None
+            mod_data = mod_freq_data(
+                args_False, window, upload_data, filename, last_modified
+            )
+            mod_data.drop(columns=["chrom"], inplace=True)
+            mod_data.set_index("position", inplace=True)
+            json_data = mod_data.to_json(orient="split")
+            return json_data, None
+        else:
+            window = window_input(input_box, genes_to_coords, args.window)
+            window_region = Region(window)
+            if upload_data is None:
+                mod_data = mod_freq_data(args, window_region)
+                mod_data = mod_data.reset_index(level="chrom", drop=True)
+                json_data = mod_data.to_json(orient="split")
+            elif upload_data is not None:
+                args_False = False
+                mod_data = mod_freq_data(
+                    args_False, window_region, upload_data, filename, last_modified
+                )
+                json_data = mod_data.to_json(orient="split")
+            return json_data, None
+
+    return html.Div([dcc.Store(id="intermediate-data")])
+
+
 def window_input(input_box, genes_to_coords, window):
     if input_box["props"]["value"] is None and window is None:
         window = None
@@ -1356,7 +1359,7 @@ def window_input(input_box, genes_to_coords, window):
             if not coords:
                 return (
                     "error",
-                    "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
                 window_input = coords
@@ -1380,25 +1383,22 @@ def validate_input(input_text):
 
 def make_gene_to_coords_dict(gff_file):
     genes_to_coords = {}
-    
-    # Determine if the file is gzipped based on its extension
     if gff_file.endswith(".gz"):
         open_func = gzip.open
         mode = "rt"
     else:
         open_func = open
         mode = "r"
-    
-    # Read the file using the appropriate function
     with open_func(gff_file, mode) as file:
         for line in file:
             if line.startswith("#"):
                 continue
             fields = line.rstrip().split("\t")
             if fields[2] == "gene":
-                name = [f for f in fields[8].split(";") if f.startswith("gene_name")][0].split("=")[1]
+                name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
+                    0
+                ].split("=")[1]
                 genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
-    
     return genes_to_coords
 
 
@@ -1440,7 +1440,7 @@ def input_box(app, args, genes_to_coords):
                             id="input-box",
                             style={"height": "30px", "margin": "0px 2px"},
                         ),
-                        "Invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                     )
                 else:
                     window = coords

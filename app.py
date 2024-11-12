@@ -1000,7 +1000,7 @@ def Genome_browser(args, app, gff, genes_to_coords):
             annotation,
             simplify,
             gff,
-            color_scale,
+            color_scale
         )
         return (
             html.Div(
@@ -1491,15 +1491,22 @@ def validate_input_1000Genomes(input_text, args):
 
 def make_gene_to_coords_dict(gff_file):
     genes_to_coords = {}
-    for line in gzip.open(gff_file, "rt"):
-        if line.startswith("#"):
-            continue
-        fields = line.rstrip().split("\t")
-        if fields[2] == "gene":
-            name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
-                0
-            ].split("=")[1]
-            genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
+    if gff_file.endswith(".gz"):
+        open_func = gzip.open
+        mode = "rt"
+    else:
+        open_func = open
+        mode = "r"
+    with open_func(gff_file, mode) as file:
+        for line in file:
+            if line.startswith("#"):
+                continue
+            fields = line.rstrip().split("\t")
+            if fields[2] == "gene":
+                name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
+                    0
+                ].split("=")[1]
+                genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
     return genes_to_coords
 
 
