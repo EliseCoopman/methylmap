@@ -78,9 +78,11 @@ def parse_nanopolish(args, window):
     if args.table:
         logging.info("Extract files and names from overviewtable")
         files, names = parse_overviewtable(args.table)
+    else:
+        files, names = args.files, args.names
 
     dfs = []
-    for file, name in zip(args.files, args.names):
+    for file, name in zip(files, names):
         if window:
             if not Path(file + ".tbi").is_file():
                 logging.info(
@@ -214,8 +216,8 @@ def parse_modfrequencytable(
 
     else:
         df = pd.read_table(args.table).sort_values("position", ascending=True)
-
         if window:
+            df = df[df["chrom"] == window.chromosome]
             logging.info("Select window out of modfreqtable")
             df = df[df["position"].between(window.begin, window.end)]
         else:
@@ -237,8 +239,7 @@ def parse_modfrequencytable(
                 end = float(df["position"].iat[numberofpositions])
                 window = Region(f"{chrom}:{round(begin)}-{round(end)}")
 
-        df.drop(["chrom"], axis=1, inplace=True)
-        df.set_index(["position"], inplace=True)
+        df.set_index(["chrom", "position"], inplace=True)
         if len(df) == 0:
             err = "WARNING: length of modification frequency table is zero. Does the input table contain data?"
             logging.error(err)
@@ -359,17 +360,18 @@ def process_modkit_tsv(filename, name):
 
 
 def parse_bam(args, window):
-    args_list = [
-        (file, name, window, args) for file, name in zip(args.files, args.names)
-    ]
     if not args.fasta:
-        logging.info("Stop script when no --fasta input")
-        sys.exit(
-            "ERROR when parsing bam/cram file, can not find fasta file. Is fasta file given with --fasta argument?"
-        )
+        logging.info("Error: No --fasta input, this is required.")
+    if args.files:
+        args_list = [
+            (file, name, window, args) for file, name in zip(args.files, args.names)
+        ]
     if args.table:
         logging.info("Extract files and names from overviewtable")
         files, names = parse_overviewtable(args.table)
+        args_list = [
+            (file, name, window, args) for file, name in zip(files, names)
+        ]
 
     # Process files concurrently with a maximum of 12 threads
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
@@ -399,6 +401,8 @@ def parse_bam(args, window):
                 if args.hapl:
                     groupshapl = list(itertools.chain(*zip(groups, groups)))
                     groups = groupshapl
+                else:
+                    groups = args.groups
                 headerlist = list(modfreqtable.columns.values)
                 if len(headerlist) == len(groups):
                     res = zip(headerlist, groups)
@@ -409,6 +413,7 @@ def parse_bam(args, window):
                     sys.exit(
                         f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
                     )
+
     return modfreqtable
 
 
