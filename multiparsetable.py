@@ -40,7 +40,7 @@ def get_args():
         default=0,
     )
     parser.add_argument(
-        "--output", help="TSV file to write the frequencies to [default: stdout]"
+        "--output", help="TSV file to write the frequencies to", required=True
     )
     parser.add_argument(
         "--groups", nargs="*", help="list of experimental group for each sample"
@@ -48,7 +48,6 @@ def get_args():
     parser.add_argument(
         "--fasta",
         help="fasta reference file, required when input is BAM/CRAM files or overviewtable with BAM/CRAM files",
-        required=True,
     )
     parser.add_argument(
         "--mod",
@@ -79,6 +78,14 @@ def get_args():
                 sys.exit(
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
+    if args.files or args.table:
+        if not args.window:
+            sys.exit("ERROR: please provide a genomic region with --window")
+    if args.files:
+        first_file = args.files[0]
+        if first_file.endswith(".bam") or first_file.endswith(".cram"):
+            if not args.fasta:
+                sys.exit("ERROR: please provide a reference fasta file with --fasta")
     return args
 
 
