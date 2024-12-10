@@ -3,7 +3,6 @@ import methylmap.annotation as annot
 import methylmap.dendro as dendrogram
 from methylmap.import_data import read_mods
 from methylmap.region import Region
-from methylmap.process_1000Genomes import process_1000Genomes
 from methylmap.version import __version__
 
 
@@ -32,9 +31,7 @@ def main():
         handlers=[logging.StreamHandler()],
     )
     args = get_args()
-    db = args.db
     gff = args.gff
-    genes_to_coords = make_gene_to_coords_dict(gff)
 
     button_style = {
         "height": "30px",
@@ -141,8 +138,14 @@ def main():
                                                     [
                                                         html.P(
                                                             [
-                                                                "Welcome to the web application of methylmap, a tool for visualizing nucleotide modification frequencies of large cohort sizes. "
-                                                                "In addition to the visualization of your own modification data, methylmap also provides the possibility to visualize the haplotype specific methylation frequencies of the ONT 1000Genomes dataset. "
+                                                                "Welcome to methylmap, a tool for visualizing nucleotide modification frequencies of large cohort sizes. "
+                                                                "You are accessing methylmap through the command line tool. In case you want to visualize the haplotype specific methylation frequencies of the ONT 1000Genomes dataset, please consult the methylmap website at ",
+                                                                html.A(
+                                                                    "methylmap.bioinf.be",
+                                                                    href="https://methylmap.bioinf.be",
+                                                                    target="_blank",
+                                                                ),
+                                                                ". "
                                                                 "If this tool is useful for your research, please cite the following paper: ",
                                                                 html.A(
                                                                     "Coopman et al.",
@@ -163,35 +166,7 @@ def main():
                                                         ),
                                                         html.P(
                                                             [
-                                                                "Bam files of the 1000Genomes project were downloaded from ",
-                                                                html.A(
-                                                                    "hg38_bamfiles_1000GenomesONT",
-                                                                    href="https://s3.amazonaws.com/1000g-ont/index.html?prefix=ALIGNMENT_AND_ASSEMBLY_DATA/FIRST_100/IN-HOUSE_MINIMAP2/HG38/",
-                                                                    target="_blank",
-                                                                ),
-                                                                ", selected for only having 5mC callling, and further processed according to the pipeline ",
-                                                                html.A(
-                                                                    "the pipeline",
-                                                                    href="https://github.com/EliseCoopman/methylmap/blob/main/1000Genomes/1000Genomes_snakemake.smk",
-                                                                ),
-                                                                " available at the methylmap Github page. ",
-                                                                "In total, 76 samples were processed, resulting in visualization of 152 haplotypes that can be consulted in the 'ONT 1000Genomes' tab.",
-                                                            ],
-                                                            style={
-                                                                "textAlign": "justify"
-                                                            },
-                                                        ),
-                                                        html.P(
-                                                            [
-                                                                "Your own data can be visualized in the 'Upload your own data' tab' by providing a modification frequency table as .tsv file. The maximum size of the file is 100MB. "
-                                                                "Starting from bam or cram files with MM/ML tags, such a table for your genomic region of interest can be generated using the ",
-                                                                html.A(
-                                                                    "multiparsetable.py script",
-                                                                    href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
-                                                                    target="_blank",
-                                                                ),
-                                                                " available at the methylmap Github page. This script also supports the generation of a modification frequency table from Nanopolish input files. "
-                                                                "More information about the expected formating for the modification frequency table can be found at ",
+                                                                "More information about the usage of the methylmap command line tool can be found on ",
                                                                 html.A(
                                                                     "the methylmap github page",
                                                                     href="https://github.com/EliseCoopman/methylmap",
@@ -220,290 +195,17 @@ def main():
                         ],
                     ),
                     dcc.Tab(
-                        label="ONT 1000Genomes",
+                        label="Your own data",
                         style=tab_style,
                         selected_style=tab_selected_style,
                         children=[
                             html.H1(
-                                "Haplotype-specific methylation frequencies ONT 1000Genomes",
+                                "Your own data",
                                 style={
                                     "bottommargin": "0px",
                                     "font-size": "25px",
                                     "padding-left": "20px",
                                 },
-                            ),
-                            dbc.Container(
-                                children=[
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                html.Label("Genomic region/Gene name:"),
-                                                width=3,
-                                            ),
-                                            dbc.Col(
-                                                html.Div(
-                                                    [
-                                                        input_box_genomebrowser(
-                                                            app, genes_to_coords
-                                                        ),
-                                                        html.Button(
-                                                            id="confirm-button_1000Genomes",
-                                                            n_clicks=0,
-                                                            children="Confirm",
-                                                            style={
-                                                                "background-color": "'#A9A9A9'",
-                                                            },
-                                                        ),
-                                                    ],
-                                                    style={
-                                                        "display": "flex",
-                                                        "align-items": "center",
-                                                    },
-                                                )
-                                            ),
-                                            dbc.Col(
-                                                html.Div(
-                                                    id="error-message_1000Genomes_inputbox",
-                                                    style={"color": "red"},
-                                                ),
-                                            ),
-                                        ],
-                                    ),
-                                    dbc.Row(style={"margin-top": "10px"}),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                html.Label("Zoom in/out:"), width=3
-                                            ),
-                                            dbc.Col(
-                                                html.Div(
-                                                    [
-                                                        html.Button(
-                                                            id="button-o10_1000Genomes",
-                                                            n_clicks=0,
-                                                            children="Out 10x",
-                                                            style=button_style,
-                                                        ),
-                                                        html.Button(
-                                                            id="button-o3_1000Genomes",
-                                                            n_clicks=0,
-                                                            children="Out 3x",
-                                                            style=button_style,
-                                                        ),
-                                                        html.Button(
-                                                            id="button-i3_1000Genomes",
-                                                            n_clicks=0,
-                                                            children="In 3x",
-                                                            style=button_style,
-                                                        ),
-                                                        html.Button(
-                                                            id="button-i10_1000Genomes",
-                                                            n_clicks=0,
-                                                            children="In 10x",
-                                                            style=button_style,
-                                                        ),
-                                                    ]
-                                                )
-                                            ),
-                                        ],
-                                    ),
-                                    dbc.Row(
-                                        [
-                                            html.Br(),
-                                        ]
-                                    ),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(html.Label("Annotation:"), width=3),
-                                            dbc.Col(
-                                                dcc.Dropdown(
-                                                    id="annotation_1000Genomes",
-                                                    options=[
-                                                        {
-                                                            "label": "On",
-                                                            "value": "on",
-                                                        },
-                                                        {
-                                                            "label": "Off",
-                                                            "value": "off",
-                                                        },
-                                                    ],
-                                                    value="on",
-                                                    clearable=False,
-                                                ),
-                                                width=2,
-                                            ),
-                                        ],
-                                        align="center",
-                                    ),
-                                    html.Div(
-                                        id="annotation-type-container_1000Genomes",
-                                        children=[
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        html.Label("Annotation type:"),
-                                                        width=3,
-                                                    ),
-                                                    dbc.Col(
-                                                        dcc.Dropdown(
-                                                            id="annotation-type_1000Genomes",
-                                                            options=[
-                                                                {
-                                                                    "label": "Gene",
-                                                                    "value": "gene",
-                                                                },
-                                                                {
-                                                                    "label": "Transcript",
-                                                                    "value": "transcript",
-                                                                },
-                                                            ],
-                                                            value="gene",
-                                                            clearable=False,
-                                                        ),
-                                                        width=2,
-                                                    ),
-                                                ],
-                                                align="center",
-                                            ),
-                                        ],
-                                    ),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                html.Label("Hierarchical clustering:"),
-                                                width=3,
-                                            ),
-                                            dbc.Col(
-                                                dcc.Dropdown(
-                                                    id="hierarchical_clustering_1000Genomes",
-                                                    options=[
-                                                        {
-                                                            "label": "On",
-                                                            "value": "on",
-                                                        },
-                                                        {
-                                                            "label": "Off",
-                                                            "value": "off",
-                                                        },
-                                                    ],
-                                                    value="off",
-                                                    clearable=False,
-                                                ),
-                                                width=2,
-                                            ),
-                                            dbc.Col(
-                                                html.Div(
-                                                    id="hierarchical_clustering_1000Genomes_message",
-                                                    children="In case of missing values, values are estimated using interpolation.",
-                                                ),
-                                            ),
-                                        ],
-                                        align="center",
-                                    ),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                html.Label("Color scale:"),
-                                                width=3,
-                                            ),
-                                            dbc.Col(
-                                                dcc.Dropdown(
-                                                    id="color_scale_1000Genomes",
-                                                    options=[
-                                                        {
-                                                            "label": "BlueRed",
-                                                            "value": "bluered",
-                                                        },
-                                                        {
-                                                            "label": "Greys",
-                                                            "value": "greys",
-                                                        },
-                                                        {
-                                                            "label": "Plasma",
-                                                            "value": "plasma",
-                                                        },
-                                                    ],
-                                                    value="plasma",
-                                                    clearable=False,
-                                                ),
-                                                width=2,
-                                            ),
-                                        ],
-                                    ),
-                                ],
-                            ),
-                            html.Div(
-                                id="error-message_1000Genomes", style={"color": "red"}
-                            ),
-                            Genome_browser(app, gff, genes_to_coords),
-                            dcc_store_genome_browser(app, db, genes_to_coords),
-                        ],
-                    ),
-                    dcc.Tab(
-                        label="Upload your own data",
-                        style=tab_style,
-                        selected_style=tab_selected_style,
-                        children=[
-                            html.H1(
-                                "Upload your own data",
-                                style={
-                                    "bottommargin": "0px",
-                                    "font-size": "25px",
-                                    "padding-left": "20px",
-                                },
-                            ),
-                            dcc.Upload(
-                                id="upload-data",
-                                children=html.Div(
-                                    [
-                                        html.P(
-                                            [
-                                                "Drag and drop your .tsv modification frequency table, enter you genomic region of interest and click on the 'Confirm' button."
-                                            ],
-                                            style={
-                                                "textAlign": "center",
-                                                "fontWeight": "bold",
-                                                "textSize": "10px",
-                                            },
-                                        ),
-                                        html.P(
-                                            [
-                                                "Starting from bam or cram files with MM/ML tags or Nanopolish files, such a table can be generated using the ",
-                                                html.A(
-                                                    "multiparsetable.py script",
-                                                    href="https://github.com/EliseCoopman/methylmap/blob/main/multiparsetable.py",
-                                                ),
-                                                " available at the methylmap Github page. ",
-                                                "This table should contain the modification frequencies for your genomic region of interest and is expected to have the following columns: chrom, position, samplename1, samplename2, ... .",
-                                                " Not more than one unique chromosome is allowed in the table. For more information, please consult the ",
-                                                html.A(
-                                                    "methylmap Github page",
-                                                    href="https://github.com/EliseCoopman/methylmap",
-                                                ),
-                                                ".",
-                                            ],
-                                            style={
-                                                "textAlign": "justify",
-                                                "textSize": "3px",
-                                                "fontStyle": "italic",
-                                                "margin": "10px",
-                                            },
-                                        ),
-                                    ],
-                                ),
-                                style={
-                                    "width": "100%",
-                                    "height": "100px",
-                                    "lineHeight": "60px",
-                                    "borderWidth": "1px",
-                                    "borderStyle": "dashed",
-                                    "borderRadius": "5px",
-                                    "line-height": "20px",
-                                    "margin": "10px",
-                                },
-                                multiple=False,
-                                max_size=100000000,
                             ),
                             dbc.Container(
                                 children=[
@@ -516,7 +218,7 @@ def main():
                                                 html.Div(
                                                     [
                                                         input_box(
-                                                            app, args, genes_to_coords
+                                                            app, args
                                                         ),
                                                         html.Button(
                                                             id="confirm-button",
@@ -720,10 +422,8 @@ def main():
                                 id="error-message",
                                 style={"color": "red"},
                             ),
-                            meth_browser(
-                                app, args, gff, genes_to_coords
-                                ),
-                            dcc_store(app, args, genes_to_coords),
+                            meth_browser(app, args, gff),
+                            dcc_store(app, args),
                         ],
                     ),
                 ]
@@ -739,25 +439,6 @@ def main():
             return {"display": "block"}
         else:
             return {"display": "none"}
-
-    @app.callback(
-        Output("annotation-type-container_1000Genomes", "style"),
-        Input("annotation_1000Genomes", "value"),
-    )
-    def toggle_annotation_type_visibility(annotation_1000Genomes):
-        if "on" in annotation_1000Genomes:
-            return {"display": "block"}
-        else:
-            return {"display": "none"}
-
-    @app.callback(
-        Output("hierarchical_clustering_1000Genomes_message", "style"),
-        Input("hierarchical_clustering_1000Genomes", "value"),
-    )
-    def update_message_visibility(selected_value):
-        if selected_value == "on":
-            return {"display": "block"}  # Show the message when 'On' is selected
-        return {"display": "none"}  # Hide the message when 'Off' is selected
 
     @app.callback(
         Output("hierarchical_clustering_message", "style"),
@@ -794,8 +475,7 @@ def get_args():
     )
     parser.add_argument(
         "--gff",
-        "--gtf",
-        help="add annotation track based on GTF/GFF file",
+        help="add annotation track based on GFF3 file",
         required=True,
     )
     parser.add_argument("--output", help="TSV file to write the frequencies to."),
@@ -834,7 +514,6 @@ def get_args():
         type=int,
         default=12,
     )
-    parser.add_argument("--db", help="use 1000Genomes data")
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     parser.add_argument(
         "--debug",
@@ -868,229 +547,24 @@ def get_args():
     if args.files or args.table:
         if not args.window:
             sys.exit("ERROR: please provide a genomic region with --window")
+    if args.files:
+        first_file = args.files[0]
+        if first_file.endswith(".bam") or first_file.endswith(".cram"):
+            if not args.fasta:
+                sys.exit("ERROR: please provide a reference fasta file with --fasta")
+    if args.table:
+        header = open(args.table, "r").readline()
+        if "path" in header:
+            df = pd.read_table(args.table)
+            if df["path"].iloc[0].endswith(".cram") or df["path"].iloc[0].endswith(".bam"):
+                if not args.fasta:
+                    sys.exit("ERROR: please provide a reference fasta file with --fasta")
+    if args.table:
+        if args.groups:
+            sys.exit("ERROR: --groups is not supported when input is a table")
+        if args.names:
+            sys.exit("ERROR: --names is not supported when input is a table")
     return args
-
-
-def Genome_browser(app, gff, genes_to_coords):
-    gnas = "chr20:58839718-58911192"
-
-    @app.callback(
-        [
-            Output(component_id="plot_1000Genomes", component_property="children"),
-            Output(
-                component_id="error-message_1000Genomes", component_property="children"
-            ),
-        ],
-        [
-            Input(
-                component_id="confirm-button_1000Genomes", component_property="n_clicks"
-            ),
-            Input(component_id="button-o3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
-            Input(
-                component_id="hierarchical_clustering_1000Genomes",
-                component_property="value",
-            ),
-            Input(component_id="annotation_1000Genomes", component_property="value"),
-            Input(
-                component_id="annotation-type_1000Genomes", component_property="value"
-            ),
-            Input(component_id="color_scale_1000Genomes", component_property="value"),
-            Input(
-                component_id="intermediate-data_1000Genomes", component_property="data"
-            ),
-        ],
-        [
-            State(component_id="input-box_1000Genomes", component_property="children"),
-        ],
-    )
-    def update_meth_browser(
-        button_confirm_1000Genomes,
-        button_o3_1000Genomes,
-        button_o10_1000Genomes,
-        button_i3_1000Genomes,
-        button_i10_1000Genomes,
-        hierarchical_clustering_1000Genomes,
-        annotation_1000Genomes,
-        annotation_type_1000Genomes,
-        color_scale,
-        mod_data_1000Genomes,
-        inputbox_1000Genomes,
-    ):
-        window, dendro, annotation, simplify, num_row, num_col, subplots = (
-            browser_information(
-                button_confirm_1000Genomes,
-                button_o3_1000Genomes,
-                button_o10_1000Genomes,
-                button_i3_1000Genomes,
-                button_i10_1000Genomes,
-                inputbox_1000Genomes,
-                hierarchical_clustering_1000Genomes,
-                annotation_1000Genomes,
-                annotation_type_1000Genomes,
-                gnas,
-                genes_to_coords,
-            )
-        )
-
-        if mod_data_1000Genomes is None:
-            return None, None
-        else:
-            json_data_1000Genomes = json.loads(mod_data_1000Genomes)
-            mod_data_1000Genomes = pd.DataFrame(
-                json_data_1000Genomes["data"], columns=json_data_1000Genomes["columns"]
-            )
-            mod_data_1000Genomes.index = json_data_1000Genomes["index"]
-            fig = process_fig(
-                mod_data_1000Genomes,
-                dendro,
-                subplots,
-                num_row,
-                num_col,
-                window,
-                annotation,
-                simplify,
-                gff,
-                color_scale
-            )
-            return (
-                html.Div(
-                    dcc.Graph(
-                        figure=fig,
-                        config={
-                            "toImageButtonOptions": {
-                                "format": "png",  # one of png, svg, jpeg, webp
-                                "filename": "1000Genomesplot",
-                                "height": 800,
-                                "width": 1200,
-                                "scale": 12,  # Multiply title/legend/axis/canvas sizes by this factor
-                            }
-                        },
-                    ),
-                    id="plot_1000Genomes",
-                ),
-                None,
-            )  # No error message
-
-    return html.Div(id="plot_1000Genomes")
-
-
-def dcc_store_genome_browser(app, db, genes_to_coords):
-    gnas = "chr20:58839718-58911192"
-
-    @app.callback(
-        Output(component_id="intermediate-data_1000Genomes", component_property="data"),
-        [
-            Input(
-                component_id="confirm-button_1000Genomes", component_property="n_clicks"
-            ),
-            Input(component_id="button-o3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
-            Input(component_id="input-box_1000Genomes", component_property="children"),
-        ],
-        [
-            State(component_id="input-box_1000Genomes", component_property="children"),
-        ],
-    )
-    def generate_data(
-        button_confirm_1000Genomes,
-        button_o3_1000Genomes,
-        button_o10_1000Genomes,
-        button_i3_1000Genomes,
-        button_i10_1000Genomes,
-        input_box_1000Genomes,
-        input_box_1000Genomes2,
-    ):
-        if db is None:
-            return None
-        else:
-            window = window_input(
-                input_box_1000Genomes, genes_to_coords, gnas
-            )
-            window_region = Region(window)
-            mod_data_1000Genomes = process_1000Genomes(db, window_region)
-            mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
-                level="chrom", drop=True
-            )
-            json_data_1000Genomes = mod_data_1000Genomes.to_json(orient="split")
-            return json_data_1000Genomes
-
-    return dcc.Store(id="intermediate-data_1000Genomes")
-
-
-def input_box_genomebrowser(app, genes_to_coords):
-    gnas_region = "chr20:58,839,718-58,911,192"
-
-    @app.callback(
-        Output(component_id="input-box_1000Genomes", component_property="children"),
-        Output(
-            component_id="error-message_1000Genomes_inputbox",
-            component_property="children",
-        ),
-        [
-            Input(
-                component_id="confirm-button_1000Genomes", component_property="n_clicks"
-            ),
-            Input(component_id="button-o3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-o10_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i3_1000Genomes", component_property="n_clicks"),
-            Input(component_id="button-i10_1000Genomes", component_property="n_clicks"),
-        ],
-        [State(component_id="input-box_1000Genomes", component_property="children")],
-    )
-    def update_value(
-        button_confirm_1000Genomes,
-        button_o3_1000Genomes,
-        button_o10_1000Genomes,
-        button_i3_1000Genomes,
-        button_i10_1000Genomes,
-        window,
-    ):
-        window = window["props"]["value"] if window else gnas_region
-        if not validate_input(window):
-            # if the input is not in the correct format to be coordinates, check if it is a gene name
-            window = window.upper()
-            coords = genes_to_coords.get(window)
-            if not coords:
-                window = "error"
-                return (
-                    html.Div(
-                        dcc.Input(type="text", value=window),
-                        id="input-box_1000Genomes",
-                        style={"height": "30px", "margin": "0px 2px"},
-                    ),
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-                )
-            else:
-                window = coords
-        window = Region(window)
-        if "button-o3_1000Genomes" == ctx.triggered_id:
-            window = window * 3
-        elif "button-o10_1000Genomes" == ctx.triggered_id:
-            window = window * 10
-        elif "button-i3_1000Genomes" == ctx.triggered_id:
-            window = window / 3
-        elif "button-i10_1000Genomes" == ctx.triggered_id:
-            window = window / 10
-        window = window.fmt
-        return (
-            html.Div(
-                dcc.Input(type="text", value=window),
-                id="input-box_1000Genomes",
-                style={"height": "30px", "margin": "0px 2px"},
-            ),
-            None,
-        )
-
-    return html.Div(
-        dcc.Input(type="text", value=gnas_region),
-        id="input-box_1000Genomes",
-        style={"height": "30px", "margin": "0px 2px"},
-    )
 
 
 def process_fig(
@@ -1162,12 +636,11 @@ def browser_information(
     annotation,
     annotation_type,
     windowregion,
-    genes_to_coords,
 ):
     # Validate the input format
     if windowregion is None and input_box["props"]["value"] is None:
         return None, None, None, None, None, None, None
-    window = window_input(input_box, genes_to_coords, windowregion)
+    window = window_input(input_box, windowregion)
     # Convert checklist values to boolean flags
     dendro = "on" in hierarchical_clustering
     annotation = "on" in annotation
@@ -1190,7 +663,7 @@ def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=N
     return read_mods(args, window, upload_data, filename, last_modified)
 
 
-def meth_browser(app, args, gff_file, genes_to_coords):
+def meth_browser(app, args, gff_file):
     @app.callback(
         [
             Output(component_id="plot", component_property="children"),
@@ -1240,7 +713,6 @@ def meth_browser(app, args, gff_file, genes_to_coords):
                     annotation,
                     annotation_type,
                     args.window,
-                    genes_to_coords,
                 )
             )
         if num_row is None and num_col is None:
@@ -1272,7 +744,7 @@ def meth_browser(app, args, gff_file, genes_to_coords):
     return html.Div(id="plot")
 
 
-def dcc_store(app, args, genes_to_coords):
+def dcc_store(app, args):
 
     @app.callback(
         [
@@ -1288,13 +760,10 @@ def dcc_store(app, args, genes_to_coords):
             Input(component_id="button-o10", component_property="n_clicks"),
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
-            Input(component_id="upload-data", component_property="contents"),
             Input(component_id="input-box", component_property="children"),
         ],
         [
             State(component_id="input-box", component_property="children"),
-            State(component_id="upload-data", component_property="filename"),
-            State(component_id="upload-data", component_property="last_modified"),
         ],
     )
     def generate_data(
@@ -1303,67 +772,43 @@ def dcc_store(app, args, genes_to_coords):
         button_o10,
         button_i3,
         button_i10,
-        upload_data,
         input_box,
         input_box_2,
-        filename,
-        last_modified,
     ):
         if (
             input_box["props"]["value"] is None
             and args.table is None
             and args.files is None
-            and upload_data is None
         ):
             return None, None
-        if input_box["props"]["value"] is None and upload_data is not None:
-            args_False = False
-            window = None
-            mod_data = mod_freq_data(
-                args_False, window, upload_data, filename, last_modified
-            )
-            mod_data.drop(columns=["chrom"], inplace=True)
-            mod_data.set_index("position", inplace=True)
-            json_data = mod_data.to_json(orient="split")
-            return json_data, None
         else:
-            window = window_input(input_box, genes_to_coords, args.window)
+            window = window_input(input_box, args.window)
             window_region = Region(window)
-            if upload_data is None:
-                mod_data = mod_freq_data(args, window_region)
-                mod_data = mod_data.reset_index(level="chrom", drop=True)
-                json_data = mod_data.to_json(orient="split")
-            elif upload_data is not None:
-                args_False = False
-                mod_data = mod_freq_data(
-                    args_False, window_region, upload_data, filename, last_modified
-                )
-                json_data = mod_data.to_json(orient="split")
+            mod_data = mod_freq_data(args, window_region)
+            print(mod_data)
+            mod_data = mod_data.reset_index(level="chrom", drop=True)
+            print(mod_data)
+            json_data = mod_data.to_json(orient="split")
+
             return json_data, None
 
     return html.Div([dcc.Store(id="intermediate-data")])
 
 
-def window_input(input_box, genes_to_coords, window):
+def window_input(
+    input_box,
+    window,
+):
     if input_box["props"]["value"] is None and window is None:
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
         if not validate_input(window_input):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
-            window_input = (
-                window_input.upper()
-            )  # make sure the gene name is in uppercase
-            coords = genes_to_coords.get(window_input)
-
-            if not coords:
-                return (
-                    "error",
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-                )
-            else:
-                window_input = coords
-
+            return (
+                "error",
+                "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+            )
     return window_input
 
 
@@ -1381,28 +826,7 @@ def validate_input(input_text):
         return False
 
 
-def make_gene_to_coords_dict(gff_file):
-    genes_to_coords = {}
-    if gff_file.endswith(".gz"):
-        open_func = gzip.open
-        mode = "rt"
-    else:
-        open_func = open
-        mode = "r"
-    with open_func(gff_file, mode) as file:
-        for line in file:
-            if line.startswith("#"):
-                continue
-            fields = line.rstrip().split("\t")
-            if fields[2] == "gene":
-                name = [f for f in fields[8].split(";") if f.startswith("gene_name")][
-                    0
-                ].split("=")[1]
-                genes_to_coords[name] = f"{fields[0]}:{fields[3]}-{fields[4]}"
-    return genes_to_coords
-
-
-def input_box(app, args, genes_to_coords):
+def input_box(app, args):
     @app.callback(
         Output(
             component_id="input-box",
@@ -1430,20 +854,15 @@ def input_box(app, args, genes_to_coords):
             window = window["props"]["value"] if window else args.window
             if not validate_input(window):
                 # if the input is not in the correct format to be coordinates, check if it is a gene name
-                window = window.upper()
-                coords = genes_to_coords.get(window)
-                if not coords:
-                    window = "error"
-                    return (
-                        html.Div(
-                            dcc.Input(type="text", value=window),
-                            id="input-box",
-                            style={"height": "30px", "margin": "0px 2px"},
-                        ),
-                        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-                    )
-                else:
-                    window = coords
+                window = "error"
+                return (
+                    html.Div(
+                        dcc.Input(type="text", value=window),
+                        id="input-box",
+                        style={"height": "30px", "margin": "0px 2px"},
+                    ),
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
             window = Region(window)
             if "button-o3" == ctx.triggered_id:
                 window = window * 3
