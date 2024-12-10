@@ -529,7 +529,7 @@ def main():
                                                 html.Div(
                                                     [
                                                         input_box(
-                                                            app, args, genes_to_coords
+                                                            app, args
                                                         ),
                                                         html.Button(
                                                             id="confirm-button",
@@ -755,10 +755,8 @@ def main():
                                 id="error-message",
                                 style={"color": "red"},
                             ),
-                            meth_browser(
-                                app, args, gff, genes_to_coords, annotation_dir
-                            ),
-                            dcc_store(app, args, genes_to_coords),
+                            meth_browser(app, args, gff, annotation_dir),
+                            dcc_store(app, args),
                         ],
                     ),
                 ]
@@ -838,8 +836,7 @@ def get_args():
     )
     parser.add_argument(
         "--gff",
-        "--gtf",
-        help="add annotation track based on GTF/GFF file",
+        help="add annotation track based on GFF3 file",
         required=True,
     )
     parser.add_argument("--output", help="TSV file to write the frequencies to."),
@@ -969,7 +966,7 @@ def Genome_browser(args, app, gff, genes_to_coords):
         inputbox_1000Genomes,
     ):
         window, dendro, annotation, simplify, num_row, num_col, subplots = (
-            browser_information(
+            browser1000Genomes_information(
                 args,
                 button_confirm_1000Genomes,
                 button_o3_1000Genomes,
@@ -1000,7 +997,7 @@ def Genome_browser(args, app, gff, genes_to_coords):
             annotation,
             simplify,
             gff,
-            color_scale
+            color_scale,
         )
         return (
             html.Div(
@@ -1195,7 +1192,7 @@ def process_fig(
     return fig
 
 
-def browser_information(
+def browser1000Genomes_information(
     args,
     button_confirm,
     button_o3,
@@ -1231,11 +1228,46 @@ def browser_information(
     return window, dendro, annotation, simplify, num_row, num_col, subplots
 
 
+def browser_information(
+    args,
+    button_confirm,
+    button_o3,
+    button_o10,
+    button_i3,
+    button_i10,
+    input_box,
+    hierarchical_clustering,
+    annotation,
+    annotation_type,
+    windowregion,
+):
+    # Validate the input format
+    if windowregion is None and input_box["props"]["value"] is None:
+        return None, None, None, None, None, None, None
+    window = window_input(input_box, windowregion)
+    # Convert checklist values to boolean flags
+    dendro = "on" in hierarchical_clustering
+    annotation = "on" in annotation
+    if annotation:
+        if annotation_type == "gene":
+            simplify = True
+        if annotation_type == "transcript":
+            simplify = False
+    if not annotation:
+        simplify = False
+
+    num_row = 2 if dendro else 1
+    num_col = 2 if annotation else 1
+
+    subplots = plots.create_subplots(num_col, num_row)
+    return window, dendro, annotation, simplify, num_row, num_col, subplots
+
+
 def mod_freq_data(args, window, upload_data=None, filename=None, last_modified=None):
     return read_mods(args, window, upload_data, filename, last_modified)
 
 
-def meth_browser(app, args, gff_file, genes_to_coords, annotation_dir):
+def meth_browser(app, args, gff_file, annotation_dir):
     @app.callback(
         [
             Output(component_id="plot", component_property="children"),
@@ -1294,7 +1326,6 @@ def meth_browser(app, args, gff_file, genes_to_coords, annotation_dir):
                     annotation,
                     annotation_type,
                     args.window,
-                    genes_to_coords,
                 )
             )
         if num_row is None and num_col is None:
@@ -1326,7 +1357,7 @@ def meth_browser(app, args, gff_file, genes_to_coords, annotation_dir):
     return html.Div(id="plot")
 
 
-def dcc_store(app, args, genes_to_coords):
+def dcc_store(app, args):
 
     @app.callback(
         [
@@ -1381,7 +1412,7 @@ def dcc_store(app, args, genes_to_coords):
             json_data = mod_data.to_json(orient="split")
             return json_data, None
         else:
-            window = window_input(input_box, genes_to_coords, args.window)
+            window = window_input(input_box, args.window)
             window_region = Region(window)
             if upload_data is None:
                 mod_data = mod_freq_data(args, window_region)
@@ -1398,26 +1429,20 @@ def dcc_store(app, args, genes_to_coords):
     return html.Div([dcc.Store(id="intermediate-data")])
 
 
-def window_input(input_box, genes_to_coords, window):
+def window_input(
+    input_box,
+    window,
+):
     if input_box["props"]["value"] is None and window is None:
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
         if not validate_input(window_input):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
-            window_input = (
-                window_input.upper()
-            )  # make sure the gene name is in uppercase
-            coords = genes_to_coords.get(window_input)
-
-            if not coords:
-                return (
-                    "error",
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-                )
-            else:
-                window_input = coords
-
+            return (
+                "error",
+                "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+            )
     return window_input
 
 
@@ -1510,7 +1535,7 @@ def make_gene_to_coords_dict(gff_file):
     return genes_to_coords
 
 
-def input_box(app, args, genes_to_coords):
+def input_box(app, args):
     @app.callback(
         Output(
             component_id="input-box",
@@ -1537,21 +1562,15 @@ def input_box(app, args, genes_to_coords):
         if window["props"]["value"] is not None or args.window is not None:
             window = window["props"]["value"] if window else args.window
             if not validate_input(window):
-                # if the input is not in the correct format to be coordinates, check if it is a gene name
-                window = window.upper()
-                coords = genes_to_coords.get(window)
-                if not coords:
-                    window = "error"
-                    return (
-                        html.Div(
-                            dcc.Input(type="text", value=window),
-                            id="input-box",
-                            style={"height": "30px", "margin": "0px 2px"},
-                        ),
-                        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-                    )
-                else:
-                    window = coords
+                window = "error"
+                return (
+                    html.Div(
+                        dcc.Input(type="text", value=window),
+                        id="input-box",
+                        style={"height": "30px", "margin": "0px 2px"},
+                    ),
+                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
             window = Region(window)
             if "button-o3" == ctx.triggered_id:
                 window = window * 3
