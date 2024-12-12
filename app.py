@@ -280,6 +280,12 @@ def main():
                                                     style={"color": "red"},
                                                 ),
                                             ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="error-message_1000Genomes_dccstore",
+                                                    style={"color": "red"},
+                                                ),
+                                            )
                                         ],
                                     ),
                                     dbc.Row(style={"margin-top": "10px"}),
@@ -528,9 +534,7 @@ def main():
                                             dbc.Col(
                                                 html.Div(
                                                     [
-                                                        input_box(
-                                                            app, args
-                                                        ),
+                                                        input_box(app, args),
                                                         html.Button(
                                                             id="confirm-button",
                                                             n_clicks=0,
@@ -981,7 +985,8 @@ def Genome_browser(args, app, gff, genes_to_coords):
                 genes_to_coords,
             )
         )
-
+        if window is None:
+            return None, None
         json_data_1000Genomes = json.loads(mod_data_1000Genomes)
         mod_data_1000Genomes = pd.DataFrame(
             json_data_1000Genomes["data"], columns=json_data_1000Genomes["columns"]
@@ -1026,6 +1031,10 @@ def dcc_store_genome_browser(app, db, genes_to_coords, args):
 
     @app.callback(
         Output(component_id="intermediate-data_1000Genomes", component_property="data"),
+        Output(
+            component_id="error-message_1000Genomes_dccstore",
+            component_property="children",
+        ),
         [
             Input(
                 component_id="confirm-button_1000Genomes", component_property="n_clicks"
@@ -1052,13 +1061,29 @@ def dcc_store_genome_browser(app, db, genes_to_coords, args):
         window = window_input_1000Genomes(
             args, input_box_1000Genomes, genes_to_coords, gnas
         )
+        if window == (
+            "error",
+            "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+        ):  
+            print("BBBBBthis error message is printed (error-message_dccstore_genomebrowser)")
+            return None, "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+        if window == ("The start position must be less than the end position."):
+            return None, "The start position must be lower than the end position."
+        if window == ("The region is too large. Please enter a region smaller than 1,000,000 bp."):
+            return (
+                None,
+                "The region is too large. Please enter a region smaller than 1,000,000 bp.",
+            )
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
         mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
             level="chrom", drop=True
         )
-        json_data_1000Genomes = mod_data_1000Genomes.to_json(orient="split")
-        return json_data_1000Genomes
+        if mod_data_1000Genomes.empty:
+            return None, "No data for this region"
+        else:
+            json_data_1000Genomes = mod_data_1000Genomes.to_json(orient="split")
+            return json_data_1000Genomes, None
 
     return dcc.Store(id="intermediate-data_1000Genomes")
 
@@ -1098,16 +1123,17 @@ def input_box_genomebrowser(app, genes_to_coords, args):
             coords = genes_to_coords.get(window)
             if not coords:
                 window = "error"
+                print("AAAAAthis error message is printed (error-message_inputbox_genomebrowser)")
                 return (
                     html.Div(
                         dcc.Input(type="text", value=window),
                         id="input-box_1000Genomes",
                         style={"height": "30px", "margin": "0px 2px"},
                     ),
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    None
                 )
             else:
-                window = coords
+                window = coords 
         window = Region(window)
         if "button-o3_1000Genomes" == ctx.triggered_id:
             window = window * 3
@@ -1206,11 +1232,18 @@ def browser1000Genomes_information(
     windowregion,
     genes_to_coords,
 ):
-    # Validate the input format
     if windowregion is None and input_box["props"]["value"] is None:
         return None, None, None, None, None, None, None
     window = window_input_1000Genomes(args, input_box, genes_to_coords, windowregion)
-    # Convert checklist values to boolean flags
+    if window == (
+        "error",
+        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+    ):
+        return None, None, None, None, None, None, None
+    if window == ("The start position must be less than the end position."):
+        return None, None, None, None, None, None, None
+    if window == ("The region is too large. Please enter a region smaller than 1,000,000 bp."):
+        return None, None, None, None, None, None, None
     dendro = "on" in hierarchical_clustering
     annotation = "on" in annotation
     if annotation:
@@ -1308,7 +1341,6 @@ def meth_browser(app, args, gff_file, annotation_dir):
         else:
             annotation = "on"
             gff = annotation_dir + "/" + annotation_file + "_sorted.gff3.gz"
-            print(gff)
 
         if input_box["props"]["value"] is None and mod_data is None:
             return None, None
@@ -1451,6 +1483,10 @@ def window_input_1000Genomes(args, input_box, genes_to_coords, window):
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
+        if validate_input_1000Genomes(window_input, args) == 'The start position must be less than the end position.':
+            return ("The start position must be less than the end position.")
+        if validate_input_1000Genomes(window_input, args) == 'The region is too large. Please enter a region smaller than 1,000,000 bp.':
+            return ('The region is too large. Please enter a region smaller than 1,000,000 bp.')
         if not validate_input_1000Genomes(window_input, args):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
             window_input = (
@@ -1484,6 +1520,7 @@ def validate_input(input_text):
 
 
 def validate_input_1000Genomes(input_text, args):
+    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     db = args.db
     tbi_file = db + ".tbi"
     if not os.path.exists(tbi_file):
@@ -1494,6 +1531,12 @@ def validate_input_1000Genomes(input_text, args):
         return False
     chrom, positions = input_text.split(":")
     start, end = map(int, positions.split("-"))
+    difference = end - start
+    if difference < 0:
+        return ('The start position must be less than the end position.')
+    if difference > 1000000:
+        print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+        return ('The region is too large. Please enter a region smaller than 1,000,000 bp.')
 
     # Set to hold valid chromosome names
     valid_chromosomes = set()
