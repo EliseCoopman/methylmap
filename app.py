@@ -1065,7 +1065,6 @@ def dcc_store_genome_browser(app, db, genes_to_coords, args):
             "error",
             "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
         ):  
-            print("BBBBBthis error message is printed (error-message_dccstore_genomebrowser)")
             return None, "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
         if window == ("The start position must be less than the end position."):
             return None, "The start position must be lower than the end position."
@@ -1123,7 +1122,6 @@ def input_box_genomebrowser(app, genes_to_coords, args):
             coords = genes_to_coords.get(window)
             if not coords:
                 window = "error"
-                print("AAAAAthis error message is printed (error-message_inputbox_genomebrowser)")
                 return (
                     html.Div(
                         dcc.Input(type="text", value=window),
@@ -1520,7 +1518,6 @@ def validate_input(input_text):
 
 
 def validate_input_1000Genomes(input_text, args):
-    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     db = args.db
     tbi_file = db + ".tbi"
     if not os.path.exists(tbi_file):
@@ -1535,7 +1532,6 @@ def validate_input_1000Genomes(input_text, args):
     if difference < 0:
         return ('The start position must be less than the end position.')
     if difference > 1000000:
-        print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
         return ('The region is too large. Please enter a region smaller than 1,000,000 bp.')
 
     # Set to hold valid chromosome names
