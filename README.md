@@ -135,4 +135,6 @@ options:
 
 ### MORE INFORMATION
 
+The app.py script is the main script for the methylmap web application. The methylmap.py script is the main script for the methylmap command line tool.
+
 More information: https://www.biorxiv.org/content/10.1101/2022.11.28.518239v1
