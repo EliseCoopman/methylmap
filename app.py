@@ -1061,18 +1061,16 @@ def dcc_store_genome_browser(app, db, genes_to_coords, args):
         window = window_input_1000Genomes(
             args, input_box_1000Genomes, genes_to_coords, gnas
         )
-        if window == (
-            "error",
-            "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-        ):  
-            return None, "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+        if window == ("error","Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192"):
+            return ("error","Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192")
         if window == ("The start position must be less than the end position."):
-            return None, "The start position must be lower than the end position."
+            return (None, "The start position must be lower than the end position.")
         if window == ("The region is too large. Please enter a region smaller than 1,000,000 bp."):
-            return (
-                None,
-                "The region is too large. Please enter a region smaller than 1,000,000 bp.",
-            )
+            return (None,"The region is too large. Please enter a region smaller than 1,000,000 bp.")
+        if window == 'Invalid chromosome. Chromsome not recognized/not present in the data.':
+            return (None,'Invalid chromosome. Chromsome not recognized/not present in the data.')
+        if window == 'No data for the given interval found.':
+            return (None,'No data for the given interval found.')     
         window_region = Region(window)
         mod_data_1000Genomes = process_1000Genomes(db, window_region)
         mod_data_1000Genomes = mod_data_1000Genomes.reset_index(
@@ -1233,14 +1231,15 @@ def browser1000Genomes_information(
     if windowregion is None and input_box["props"]["value"] is None:
         return None, None, None, None, None, None, None
     window = window_input_1000Genomes(args, input_box, genes_to_coords, windowregion)
-    if window == (
-        "error",
-        "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
-    ):
+    if window == ("error","Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192"):
         return None, None, None, None, None, None, None
     if window == ("The start position must be less than the end position."):
         return None, None, None, None, None, None, None
     if window == ("The region is too large. Please enter a region smaller than 1,000,000 bp."):
+        return None, None, None, None, None, None, None
+    if window == 'Invalid chromosome. Chromsome not recognized/not present in the data.':
+        return None, None, None, None, None, None, None
+    if window == 'No data for the given interval found.':
         return None, None, None, None, None, None, None
     dendro = "on" in hierarchical_clustering
     annotation = "on" in annotation
@@ -1485,6 +1484,10 @@ def window_input_1000Genomes(args, input_box, genes_to_coords, window):
             return ("The start position must be less than the end position.")
         if validate_input_1000Genomes(window_input, args) == 'The region is too large. Please enter a region smaller than 1,000,000 bp.':
             return ('The region is too large. Please enter a region smaller than 1,000,000 bp.')
+        if validate_input_1000Genomes(window_input, args) == 'Invalid chromosome. Chromsome not recognized/not present in the data.':
+            return ('Invalid chromosome. Chromsome not recognized/not present in the data.')
+        if validate_input_1000Genomes(window_input, args) == 'No data for the given interval found.':
+            return ('No data for the given interval found.')
         if not validate_input_1000Genomes(window_input, args):
             # if the input is not in the correct format to be coordinates, check if it is a gene name
             window_input = (
@@ -1495,7 +1498,7 @@ def window_input_1000Genomes(args, input_box, genes_to_coords, window):
             if not coords:
                 return (
                     "error",
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    "Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
                 )
             else:
                 window_input = coords
@@ -1540,14 +1543,14 @@ def validate_input_1000Genomes(input_text, args):
     for chromosome in tabix_file.contigs:
         valid_chromosomes.add(chromosome)
     if chrom not in valid_chromosomes:
-        return False  # Invalid chromosome
+        return ("Invalid chromosome. Chromsome not recognized/not present in the data.")  # Invalid chromosome
 
     # Fetch the region using tabix, and check if any data is returned
     try:
         records = tabix_file.fetch(chrom, start, end)
         for record in records:
             return True  # If any record is found in the range, the input is valid
-        return False  # No records found in the range
+        return ("No data for the given interval found.")  # No records found in the range
     except ValueError:
         # Handle case where chromosome or range isn't valid in the tabix file
         return False
