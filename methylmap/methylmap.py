@@ -250,10 +250,9 @@ def main():
                                         ],
                                     ),
                                     dbc.Row(
-                                        # Add space between the rows
                                         style={
                                             "margin-top": "10px"
-                                        }  # Adjust the margin as needed
+                                        } 
                                     ),
                                     dbc.Row(
                                         [
@@ -446,8 +445,8 @@ def main():
     )
     def update_message_visibility(selected_value):
         if selected_value == "on":
-            return {"display": "block"}  # Show the message when 'On' is selected
-        return {"display": "none"}  # Hide the message when 'Off' is selected
+            return {"display": "block"}
+        return {"display": "none"}
 
     app.title = "methylmap"
     app.run(host=args.host, port=args.port, debug=args.debug)
@@ -637,11 +636,20 @@ def browser_information(
     annotation_type,
     windowregion,
 ):
-    # Validate the input format
     if windowregion is None and input_box["props"]["value"] is None:
         return None, None, None, None, None, None, None
     window = window_input(input_box, windowregion)
-    # Convert checklist values to boolean flags
+    if window == (
+        "error",
+        "Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+    ):
+        return None, None, None, None, None, None, None
+    if window == ("The start position must be less than the end position."):
+        return None, None, None, None, None, None, None
+    if window == (
+        "The region is too large. Please enter a region smaller than 1,000,000 bp."
+    ):
+        return None, None, None, None, None, None, None
     dendro = "on" in hierarchical_clustering
     annotation = "on" in annotation
     if annotation:
@@ -718,10 +726,11 @@ def meth_browser(app, args, gff_file):
         if num_row is None and num_col is None:
             return None, None
         else:
-
             json_data = json.loads(mod_data)
             mod_data = pd.DataFrame(json_data["data"], columns=json_data["columns"])
             mod_data.index = json_data["index"]
+            if mod_data.empty:
+                return None, "No data for this region"
             if args.gff:
                 gff = args.gff
             else:
@@ -739,7 +748,7 @@ def meth_browser(app, args, gff_file):
                 color_scale,
                 args.output,
             )
-            return html.Div(dcc.Graph(figure=fig), id="plot"), None  # No error message
+            return html.Div(dcc.Graph(figure=fig), id="plot"), None  
 
     return html.Div(id="plot")
 
@@ -783,13 +792,30 @@ def dcc_store(app, args):
             return None, None
         else:
             window = window_input(input_box, args.window)
+            if window == (
+                "error",
+                "Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+            ):
+                return (
+                    None,
+                    "Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                )
+            if window == ("The start position must be less than the end position."):
+                return None, "The start position must be less than the end position."
+            if window == (
+                "The region is too large. Please enter a region smaller than 1,000,000 bp."
+            ):
+                return (
+                    None,
+                    "The region is too large. Please enter a region smaller than 1,000,000 bp.",
+                )
             window_region = Region(window)
             mod_data = mod_freq_data(args, window_region)
-            print(mod_data)
             mod_data = mod_data.reset_index(level="chrom", drop=True)
-            print(mod_data)
-            json_data = mod_data.to_json(orient="split")
-
+            if mod_data.empty:
+                return None, "No data for this region"
+            else:
+                json_data = mod_data.to_json(orient="split")
             return json_data, None
 
     return html.Div([dcc.Store(id="intermediate-data")])
@@ -803,27 +829,38 @@ def window_input(
         window = None
     else:
         window_input = input_box["props"]["value"] if input_box else window
+        if (
+            validate_input(window_input)
+            == "The start position must be less than the end position."
+        ):
+            return "The start position must be less than the end position."
+        if (
+            validate_input(window_input)
+            == "The region is too large. Please enter a region smaller than 1,000,000 bp."
+        ):
+            return "The region is too large. Please enter a region smaller than 1,000,000 bp."
         if not validate_input(window_input):
-            # if the input is not in the correct format to be coordinates, check if it is a gene name
             return (
                 "error",
-                "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                "Input not recognized. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
             )
     return window_input
 
 
 def validate_input(input_text):
-    # Define the regular expression pattern for the valid formats
-    pattern_with_commas = r"^chr\d+:\d+,\d+,\d+-\d+,\d+,\d+$"
-    pattern_without_commas = r"^chr\d+:\d+-\d+$"
-
-    # Check if the input matches either pattern
-    if re.match(pattern_with_commas, input_text) or re.match(
-        pattern_without_commas, input_text
-    ):
-        return True
-    else:
+    input_text = input_text.replace(",", "")
+    if ":" not in input_text or "-" not in input_text:
         return False
+    chrom, positions = input_text.split(":")
+    start, end = map(int, positions.split("-"))
+    difference = end - start
+    if difference < 0:
+        return "The start position must be less than the end position."
+    if difference > 1000000:
+        return (
+            "The region is too large. Please enter a region smaller than 1,000,000 bp."
+        )
+    return True
 
 
 def input_box(app, args):
@@ -853,7 +890,6 @@ def input_box(app, args):
         if window["props"]["value"] is not None or args.window is not None:
             window = window["props"]["value"] if window else args.window
             if not validate_input(window):
-                # if the input is not in the correct format to be coordinates, check if it is a gene name
                 window = "error"
                 return (
                     html.Div(
@@ -861,7 +897,7 @@ def input_box(app, args):
                         id="input-box",
                         style={"height": "30px", "margin": "0px 2px"},
                     ),
-                    "No data for this region OR invalid input format. Please enter genomic region in a valid format. Example chr20:58,839,718-58,911,192 or chr20:58839718-58911192",
+                    None,
                 )
             window = Region(window)
             if "button-o3" == ctx.triggered_id:
