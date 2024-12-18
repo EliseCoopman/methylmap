@@ -96,8 +96,10 @@ Important: Adding a GFF3 file is required, use the --gff argument.
   - File should be indexed (use: tabix -p gff annotation_sorted.gff3.gz)
 
 Important: When using BAM/CRAM files as input, a reference genome with the --fasta argument is required.
+  - File should not be zipped/bgzipped.
+  - Indexed file should be present in the same directory as the fasta file.
 
-Important: When perfroming hierarchical clustering, missing values are imputed using the pandas interpolate method.
+Important: When perfroming hierarchical clustering, missing values are imputed using the pandas interpolate method. Genomic positions with missing values after imputation are removed from the visualization.
 
 
 ```
