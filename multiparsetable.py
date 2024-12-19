@@ -25,6 +25,7 @@ def get_args():
         nargs="+",
         help="list of CRAM or BAM files",
     )
+    action.add_argument("--tsv", help="TSV file with file name, sample name and group")
     parser.add_argument(
         "-w",
         "--window",
@@ -78,9 +79,19 @@ def get_args():
                 sys.exit(
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
-    if args.files or args.table:
+    if args.files or args.tsv:
         if not args.window:
             sys.exit("ERROR: please provide a genomic region with --window")
+    if args.tsv:
+        if not Path(args.tsv).is_file():
+            sys.exit(f"ERROR: file {args.tsv} does not exist, please check the path!")
+        tsv_df = pd.read_csv(args.tsv, sep="\t")
+        if not all(col in tsv_df.columns for col in ["file", "name"]):
+            sys.exit("ERROR: provide a TSV file with minimally columns 'file' and 'name'")
+        args.files = tsv_df["file"].tolist()
+        args.names = tsv_df["name"].tolist()
+        if "group" in tsv_df.columns:
+            args.groups = tsv_df["group"].tolist()
     if args.files:
         first_file = args.files[0]
         if first_file.endswith(".bam") or first_file.endswith(".cram"):
