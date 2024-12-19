@@ -98,7 +98,6 @@ def main():
             overviewtable = parse_nanopolish(args, window)
         elif file_type in ["cram", "bam"]:
             check_modkit()
-            rc = subprocess.call(["which", "modkit"])
             overviewtable = parse_bam(args, window)
         if args.output:
             overviewtable.to_csv(args.output, sep="\t", na_rep=np.NaN, header=True)
