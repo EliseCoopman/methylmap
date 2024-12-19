@@ -41,7 +41,7 @@ def get_args():
         default=0,
     )
     parser.add_argument(
-        "--output", help="TSV file to write the frequencies to", required=True
+        "-o", "--output", help="TSV file to write the frequencies to", required=True
     )
     parser.add_argument(
         "--groups", nargs="*", help="list of experimental group for each sample"
