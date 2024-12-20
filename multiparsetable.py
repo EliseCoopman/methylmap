@@ -174,7 +174,7 @@ def process_single_file(function_args):
         output = (
             temp_dir if args.hapl else os.path.join(temp_dir, f"{file_basename}.bed")
         )
-
+        logging.info(f"Processing file {input}")
         stderr = run_modkit_pileup(
             input=input,
             output=output,
@@ -186,7 +186,7 @@ def process_single_file(function_args):
         )
         if not args.quiet:
             tqdm.write(stderr, file=sys.stderr)
-        logging.info("Read the file in a dataframe per haplotype.")
+        logging.info(f"Read {input} in a dataframe per haplotype.")
         if args.hapl:
             return [
                 process_modkit_tsv(
@@ -241,8 +241,9 @@ def process_modkit_tsv(filename, name):
         "Ndiff",
         "Nnocall",
     ]
-
-    logging.info("Read the modkit file in a dataframe.")
+    if not Path(filename).is_file():
+        sys.exit(f"\n\nERROR: File {filename} for {name} does not exist, please check the path and log!\n")
+    logging.info(f"Reading the modkit file for {name} in a dataframe.")
     df = pd.read_table(
         filename,
         sep="\t",
