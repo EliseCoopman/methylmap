@@ -111,9 +111,9 @@ def main():
             check_modkit()
             overviewtable = parse_bam(args, window)
         if args.output:
-            overviewtable.to_csv(args.output, sep="\t", na_rep=np.NaN, header=True)
+            overviewtable.to_csv(args.output, sep="\t", na_rep='NA', header=True)
         else:
-            print(overviewtable.to_csv(sep="\t", na_rep=np.NaN, header=True))
+            print(overviewtable.to_csv(sep="\t", na_rep='NA', header=True))
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
