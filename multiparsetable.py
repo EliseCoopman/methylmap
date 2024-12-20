@@ -149,17 +149,16 @@ def parse_bam(args, window):
     if args.groups:
         logging.info("Sort columns of methfrequencytable based on group")
         if args.hapl:
-            groupshapl = list(itertools.chain(*zip(groups, groups)))
-            groups = groupshapl
+            args.groups = list(itertools.chain(*zip(args.groups, args.groups)))
         headerlist = list(methfrequencytable.columns.values)
-        if len(headerlist) == len(groups):
-            res = zip(headerlist, groups)
+        if len(headerlist) == len(args.groups):
+            res = zip(headerlist, args.groups)
             output = sorted(list(res), key=lambda x: x[1])
             orderedlist = [i[0] for i in output]
             methfrequencytable = methfrequencytable.reindex(columns=orderedlist)
         else:
             sys.exit(
-                f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
             )
 
     return methfrequencytable
