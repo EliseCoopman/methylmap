@@ -67,6 +67,7 @@ def get_args():
         type=int,
         default=12,
     )
+    parser.add_argument("--round", help="make the file smaller by rounding the values to integers", action="store_true")
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     args = parser.parse_args()
     if args.files:
@@ -110,6 +111,8 @@ def main():
         elif file_type in ["cram", "bam"]:
             check_modkit()
             overviewtable = parse_bam(args, window)
+        if args.round:
+            overviewtable = overviewtable.round(0)
         if args.output:
             overviewtable.to_csv(args.output, sep="\t", na_rep='NA', header=True)
         else:
