@@ -414,7 +414,8 @@ def main():
                                             dbc.Col(
                                                 html.Div(
                                                     id="hierarchical_clustering_1000Genomes_message",
-                                                    children="In case of missing values, values are estimated using interpolation.",
+                                                    children="Individuals with 40% or more missing data are removed. If there are still missing values, they are estimated using interpolation. Any remaining missing values after interpolation result in the removal of those individuals.",
+                                                    style={"fontSize": "5px"},
                                                 ),
                                             ),
                                         ],
@@ -564,11 +565,7 @@ def main():
                                             ),
                                         ],
                                     ),
-                                    dbc.Row(
-                                        style={
-                                            "margin-top": "10px"
-                                        } 
-                                    ),
+                                    dbc.Row(style={"margin-top": "10px"}),
                                     dbc.Row(
                                         [
                                             dbc.Col(
@@ -716,7 +713,8 @@ def main():
                                             dbc.Col(
                                                 html.Div(
                                                     id="hierarchical_clustering_message",
-                                                    children="In case of missing values, values are estimated using interpolation.",
+                                                    children="Individuals with 40% or more missing data are removed. If there are still missing values, they are estimated using interpolation. Any remaining missing values after interpolation result in the removal of those individuals.",
+                                                    style={"fontSize": "5px"},
                                                 ),
                                             ),
                                         ],
