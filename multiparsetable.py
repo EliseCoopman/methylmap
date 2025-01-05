@@ -25,6 +25,7 @@ def get_args():
         nargs="+",
         help="list of CRAM or BAM files",
     )
+    action.add_argument("--tsv", help="TSV file with file name, sample name and group")
     parser.add_argument(
         "-w",
         "--window",
@@ -40,7 +41,7 @@ def get_args():
         default=0,
     )
     parser.add_argument(
-        "--output", help="TSV file to write the frequencies to", required=True
+        "-o", "--output", help="TSV file to write the frequencies to", required=True
     )
     parser.add_argument(
         "--groups", nargs="*", help="list of experimental group for each sample"
@@ -66,6 +67,7 @@ def get_args():
         type=int,
         default=12,
     )
+    parser.add_argument("--round", help="make the file smaller by rounding the values to integers", action="store_true")
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     args = parser.parse_args()
     if args.files:
@@ -78,9 +80,19 @@ def get_args():
                 sys.exit(
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
-    if args.files or args.table:
+    if args.files or args.tsv:
         if not args.window:
             sys.exit("ERROR: please provide a genomic region with --window")
+    if args.tsv:
+        if not Path(args.tsv).is_file():
+            sys.exit(f"ERROR: file {args.tsv} does not exist, please check the path!")
+        tsv_df = pd.read_csv(args.tsv, sep="\t")
+        if not all(col in tsv_df.columns for col in ["file", "name"]):
+            sys.exit("ERROR: provide a TSV file with minimally columns 'file' and 'name'")
+        args.files = tsv_df["file"].tolist()
+        args.names = tsv_df["name"].tolist()
+        if "group" in tsv_df.columns:
+            args.groups = tsv_df["group"].tolist()
     if args.files:
         first_file = args.files[0]
         if first_file.endswith(".bam") or first_file.endswith(".cram"):
@@ -98,12 +110,13 @@ def main():
             overviewtable = parse_nanopolish(args, window)
         elif file_type in ["cram", "bam"]:
             check_modkit()
-            rc = subprocess.call(["which", "modkit"])
             overviewtable = parse_bam(args, window)
+        if args.round:
+            overviewtable = overviewtable.round(0)
         if args.output:
-            overviewtable.to_csv(args.output, sep="\t", na_rep=np.NaN, header=True)
+            overviewtable.to_csv(args.output, sep="\t", na_rep='NA', header=True)
         else:
-            print(overviewtable.to_csv(sep="\t", na_rep=np.NaN, header=True))
+            print(overviewtable.to_csv(sep="\t", na_rep='NA', header=True))
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -139,17 +152,16 @@ def parse_bam(args, window):
     if args.groups:
         logging.info("Sort columns of methfrequencytable based on group")
         if args.hapl:
-            groupshapl = list(itertools.chain(*zip(groups, groups)))
-            groups = groupshapl
+            args.groups = list(itertools.chain(*zip(args.groups, args.groups)))
         headerlist = list(methfrequencytable.columns.values)
-        if len(headerlist) == len(groups):
-            res = zip(headerlist, groups)
+        if len(headerlist) == len(args.groups):
+            res = zip(headerlist, args.groups)
             output = sorted(list(res), key=lambda x: x[1])
             orderedlist = [i[0] for i in output]
             methfrequencytable = methfrequencytable.reindex(columns=orderedlist)
         else:
             sys.exit(
-                f"ERROR when matching --groups with samples, is length of --groups list ({len(groups)}) matching with number of sample files?"
+                f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
             )
 
     return methfrequencytable
@@ -165,7 +177,7 @@ def process_single_file(function_args):
         output = (
             temp_dir if args.hapl else os.path.join(temp_dir, f"{file_basename}.bed")
         )
-
+        logging.info(f"Processing file {input}")
         stderr = run_modkit_pileup(
             input=input,
             output=output,
@@ -177,7 +189,7 @@ def process_single_file(function_args):
         )
         if not args.quiet:
             tqdm.write(stderr, file=sys.stderr)
-        logging.info("Read the file in a dataframe per haplotype.")
+        logging.info(f"Read {input} in a dataframe per haplotype.")
         if args.hapl:
             return [
                 process_modkit_tsv(
@@ -232,8 +244,9 @@ def process_modkit_tsv(filename, name):
         "Ndiff",
         "Nnocall",
     ]
-
-    logging.info("Read the modkit file in a dataframe.")
+    if not Path(filename).is_file():
+        sys.exit(f"\n\nERROR: File {filename} for {name} does not exist, please check the path and log!\n")
+    logging.info(f"Reading the modkit file for {name} in a dataframe.")
     df = pd.read_table(
         filename,
         sep="\t",

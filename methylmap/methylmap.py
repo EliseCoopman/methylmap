@@ -547,7 +547,11 @@ def get_args():
             if not args.fasta:
                 sys.exit("ERROR: please provide a reference fasta file with --fasta")
     if args.table:
-        header = open(args.table, "r").readline()
+        if args.table.endswith(".gz"):
+            with gzip.open(args.table, "rt") as f:
+                header = f.readline()
+        else:
+            header = open(args.table, "r").readline()
         if "path" in header:
             df = pd.read_table(args.table)
             if df["path"].iloc[0].endswith(".cram") or df["path"].iloc[0].endswith(".bam"):

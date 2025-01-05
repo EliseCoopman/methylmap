@@ -193,21 +193,33 @@ def parse_modfrequencytable(
         content_type, content_string = upload_data.split(",")
         decoded = base64.b64decode(content_string)
         try:
-            if "tsv" in filename:
+            if "tsv" in filename or "tsv.gz" in filename:
                 if window is not None:
-                    df = pd.read_csv(
-                        io.StringIO(decoded.decode("utf-8")), sep="\t"
-                    ).sort_values("position", ascending=True)
+                    if filename.endswith(".gz"):
+                        df = pd.read_csv(
+                            io.BytesIO(decoded), compression="gzip", sep="\t"
+                        ).sort_values("position", ascending=True)
+                    else:
+                        df = pd.read_csv(
+                            io.StringIO(decoded.decode("utf-8")), sep="\t"
+                        ).sort_values("position", ascending=True)
                     df = df[df["chrom"] == window.chromosome]
-                    df = df[df["position"].between(window.begin, window.end)]
-                    df.drop(["chrom"], axis=1, inplace=True)
-                    df.set_index(["position"], inplace=True)
+                    df = (
+                        df[df["position"].between(window.begin, window.end)]
+                        .drop(["chrom"], axis=1, inplace=True)
+                        .set_index(["position"], inplace=True)
+                    )
                 if window is None:
-                    df = pd.read_csv(
-                        io.StringIO(decoded.decode("utf-8")), sep="\t", nrows=500
-                    ).sort_values("position", ascending=True)
-                    first_chromosome = df["chrom"].unique()[0]
-                    df = df[df["chrom"] == first_chromosome]
+                    if filename.endswith(".gz"):
+                        df = pd.read_csv(
+                            io.BytesIO(decoded), compression="gzip", sep="\t", nrows=500
+                        ).sort_values("position", ascending=True)
+                    else:
+                        df = pd.read_csv(
+                            io.StringIO(decoded.decode("utf-8")), sep="\t", nrows=500
+                        ).sort_values("position", ascending=True)
+                    # subset the dataframe to one chromosome only
+                    df = df[df["chrom"] == df["chrom"].unique()[0]]
             else:
                 return
         except Exception as e:
@@ -215,7 +227,12 @@ def parse_modfrequencytable(
             return
 
     else:
-        df = pd.read_table(args.table).sort_values("position", ascending=True)
+        if args.table.endswith(".gz"):
+            df = pd.read_table(args.table, compression="gzip").sort_values(
+                "position", ascending=True
+            )
+        else:
+            df = pd.read_table(args.table).sort_values("position", ascending=True)
         if window:
             df = df[df["chrom"] == window.chromosome]
             logging.info("Select window out of modfreqtable")
@@ -369,9 +386,7 @@ def parse_bam(args, window):
     if args.table:
         logging.info("Extract files and names from overviewtable")
         files, names = parse_overviewtable(args.table)
-        args_list = [
-            (file, name, window, args) for file, name in zip(files, names)
-        ]
+        args_list = [(file, name, window, args) for file, name in zip(files, names)]
 
     # Process files concurrently with a maximum of 12 threads
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
