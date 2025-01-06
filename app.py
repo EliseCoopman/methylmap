@@ -473,18 +473,19 @@ def main():
                                     "padding-left": "20px",
                                 },
                             ),
+                            # Removed dcc.Loading around upload-data
                             dcc.Upload(
                                 id="upload-data",
                                 children=html.Div(
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv modification frequency table, enter you genomic region of interest and click on the 'Confirm' button."
+                                                "Drag and drop your .tsv modification frequency table, enter your genomic region of interest and click on the 'Confirm' button."
                                             ],
                                             style={
                                                 "textAlign": "center",
                                                 "fontWeight": "bold",
-                                                "textSize": "10px",
+                                                "fontSize": "20px",
                                             },
                                         ),
                                         html.P(
@@ -507,10 +508,10 @@ def main():
                                                 "textAlign": "justify",
                                                 "textSize": "3px",
                                                 "fontStyle": "italic",
-                                                "margin": "10px",
+                                                "margin": "8px",
                                             },
                                         ),
-                                    ],
+                                    ]
                                 ),
                                 style={
                                     "width": "100%",
@@ -524,6 +525,14 @@ def main():
                                 },
                                 multiple=False,
                                 max_size=100000000,
+                            ),
+                            # Now using dcc.Loading to show the spinner after upload
+                            dcc.Loading(
+                                id="upload-loading",
+                                type="default",
+                                children=html.Div(
+                                    id="loading-content",  # Content that will show loading indicator
+                                ),
                             ),
                             dbc.Container(
                                 children=[
@@ -811,6 +820,24 @@ def main():
             return {"display": "block"}
         return {"display": "none"}
 
+    @app.callback(
+        Output("upload-loading", "children"),
+        Input("upload-data", "contents"),
+        State("upload-data", "filename"),
+    )
+    def process_upload(contents, filename):
+        if contents is None:
+            return [html.Div()]
+        return html.Div(
+            [
+                html.H5(
+                    f"File '{filename}' uploaded successfully. Please enter a genomic region and click on the 'Confirm' button.",
+                    style={"fontSize": "12px",
+                           "margin": "8px",},
+                ),
+            ]
+        )
+
     app.title = "methylmap"
     app.run(host=args.host, port=args.port, debug=args.debug)
 
@@ -1011,14 +1038,14 @@ def Genome_browser(args, app, gff, genes_to_coords):
                             "filename": "1000Genomesplot",
                             "height": 800,
                             "width": 1200,
-                            "scale": 12, 
+                            "scale": 12,
                         }
                     },
                 ),
                 id="plot_1000Genomes",
             ),
             None,
-        ) 
+        )
 
     return html.Div(id="plot_1000Genomes")
 
@@ -1409,7 +1436,7 @@ def meth_browser(app, args, gff_file, annotation_dir):
                 color_scale,
                 args.output,
             )
-            return html.Div(dcc.Graph(figure=fig), id="plot"), None 
+            return html.Div(dcc.Graph(figure=fig), id="plot"), None
 
     return html.Div(id="plot")
 
@@ -1560,9 +1587,7 @@ def window_input_1000Genomes(args, input_box, genes_to_coords, window):
         ):
             return "No data found for the given interval."
         if not validate_input_1000Genomes(window_input, args):
-            window_input = (
-                window_input.upper()
-            ) 
+            window_input = window_input.upper()
             coords = genes_to_coords.get(window_input)
 
             if not coords:
@@ -1615,7 +1640,7 @@ def validate_input_1000Genomes(input_text, args):
     for chromosome in tabix_file.contigs:
         valid_chromosomes.add(chromosome)
     if chrom not in valid_chromosomes:
-        return "Invalid chromosome. Chromsome not recognized/not present in the data." 
+        return "Invalid chromosome. Chromsome not recognized/not present in the data."
     try:
         records = tabix_file.fetch(chrom, start, end)
         for record in records:
