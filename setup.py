@@ -36,7 +36,7 @@ setup(
         "numpy",
         "plotly>=5.4.0",
         "scipy",
-        "dash",
+        "dash>=2.18.0",
         "pathlib",
         "tqdm",
         "dash_bootstrap_components",
