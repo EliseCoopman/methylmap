@@ -116,7 +116,7 @@ Important: When using BAM/CRAM files as input, a reference genome with the --fas
 - File should not be zipped/bgzipped.
 - Indexed file should be present in the same directory as the fasta file.
 
-Important: When perfroming hierarchical clustering, missing values are imputed using the pandas interpolate method. Genomic positions with missing values after imputation are removed from the visualization.
+Important: Individuals with 40% or more missing data are removed. If there are still missing values, they are estimated using the pandas interpolate method. Any remaining missing values after interpolation result in the removal of those individuals.
 
 ```text
 usage: methylmap [-h] [-f FILES [FILES ...] | -t TABLE] [-w WINDOW] [-n [NAMES ...]] --gff GFF [--output OUTPUT] [--groups [GROUPS ...]] [-s] [--fasta FASTA]
