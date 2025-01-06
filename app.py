@@ -485,7 +485,7 @@ def main():
                                             style={
                                                 "textAlign": "center",
                                                 "fontWeight": "bold",
-                                                "fontSize": "20px",
+                                                "textSize": "10px",
                                             },
                                         ),
                                         html.P(
