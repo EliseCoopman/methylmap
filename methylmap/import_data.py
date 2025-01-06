@@ -204,11 +204,11 @@ def parse_modfrequencytable(
                             io.StringIO(decoded.decode("utf-8")), sep="\t"
                         ).sort_values("position", ascending=True)
                     df = df[df["chrom"] == window.chromosome]
-                    df = (
-                        df[df["position"].between(window.begin, window.end)]
-                        .drop(["chrom"], axis=1, inplace=True)
-                        .set_index(["position"], inplace=True)
+                    df = df[df["position"].between(window.begin, window.end)]
+                    df.drop(
+                        ["chrom"], axis=1, inplace=True
                     )
+                    df.set_index(["position"], inplace=True)
                 if window is None:
                     if filename.endswith(".gz"):
                         df = pd.read_csv(
