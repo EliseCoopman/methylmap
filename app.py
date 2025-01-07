@@ -832,8 +832,10 @@ def main():
             [
                 html.H5(
                     f"File '{filename}' uploaded successfully. Please enter a genomic region and click on the 'Confirm' button.",
-                    style={"fontSize": "12px",
-                           "margin": "8px",},
+                    style={
+                        "fontSize": "12px",
+                        "margin": "8px",
+                    },
                 ),
             ]
         )
@@ -1364,6 +1366,7 @@ def meth_browser(app, args, gff_file, annotation_dir):
             Input(component_id="button-i3", component_property="n_clicks"),
             Input(component_id="button-i10", component_property="n_clicks"),
             Input(component_id="hierarchical_clustering", component_property="value"),
+            Input(component_id="annotation", component_property="value"),
             Input(component_id="annotation-file", component_property="value"),
             Input(component_id="annotation-type", component_property="value"),
             Input(component_id="color_scale", component_property="value"),
@@ -1380,18 +1383,23 @@ def meth_browser(app, args, gff_file, annotation_dir):
         button_i3,
         button_i10,
         hierarchical_clustering,
+        annotation,
         annotation_file,
         annotation_type,
         color_scale,
         mod_data,
         input_box,
     ):
-        if annotation_file is None:
+        if annotation == "off":
             annotation = "off"
             gff = None
-        else:
-            annotation = "on"
-            gff = annotation_dir + "/" + annotation_file + "_sorted.gff3.gz"
+        if annotation == "on":
+            if annotation_file is None:
+                annotation = "off"
+                gff = None
+            else:
+                annotation = "on"
+                gff = annotation_dir + "/" + annotation_file + "_sorted.gff3.gz"
 
         if input_box["props"]["value"] is None and mod_data is None:
             return None, None
