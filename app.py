@@ -480,7 +480,7 @@ def main():
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv modification frequency table, enter your genomic region of interest and click on the 'Confirm' button. Please note that the maximum allowed file size is 100MB."
+                                                "Drag and drop your .tsv/.tsv.gz modification frequency table, enter your genomic region of interest and click on the 'Confirm' button. Please note that the maximum allowed file size is 100MB."
                                             ],
                                             style={
                                                 "textAlign": "center",
