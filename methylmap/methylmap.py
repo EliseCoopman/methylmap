@@ -458,7 +458,8 @@ def get_args():
         nargs="+",
         help="list with BAM/CRAM files or nanopolish (processed with calculate_methylation_frequency.py) files",
     )
-    action.add_argument("-t", "--table", help="methfreqtable or overviewtable input")
+    action.add_argument("-t", "--table", help="methfreqtable input")
+    action.add_argument("-tsv", "--tsv", help="overviewtable input")
     parser.add_argument(
         "-w",
         "--window",
@@ -528,6 +529,26 @@ def get_args():
         version=f"methylmap {__version__}",
     )
     args = parser.parse_args()
+    if args.files or args.table or args.tsv:
+        if not args.window:
+            sys.exit("ERROR: please provide a genomic region with --window")
+    if args.tsv:
+        if args.groups:
+            sys.exit("ERROR: --groups is not supported when input is an overviewtable")
+        if args.names:
+            sys.exit("ERROR: --names is not supported when input is an overviewtable")
+        from pathlib import Path
+        if not Path(args.tsv).is_file():
+            sys.exit(f"ERROR: file {args.tsv} does not exist, please check the path!")
+        tsv_df = pd.read_csv(args.tsv, sep="\t")
+        if not all(col in tsv_df.columns for col in ["file", "name"]):
+            sys.exit(
+                "ERROR: provide a TSV file with minimally columns 'file' and 'name'"
+            )
+        args.files = tsv_df["file"].tolist()
+        args.names = tsv_df["name"].tolist()
+        if "group" in tsv_df.columns:
+            args.groups = tsv_df["group"].tolist()
     if args.files:
         if len(args.names) == 0:
             for b in args.files:
@@ -538,26 +559,11 @@ def get_args():
                 sys.exit(
                     f"ERROR: expecting the same number of input files [{len(args.files)}] and names [{len(args.names)}]"
                 )
-    if args.files or args.table:
-        if not args.window:
-            sys.exit("ERROR: please provide a genomic region with --window")
     if args.files:
         first_file = args.files[0]
         if first_file.endswith(".bam") or first_file.endswith(".cram"):
             if not args.fasta:
                 sys.exit("ERROR: please provide a reference fasta file with --fasta")
-    if args.table:
-        if args.table.endswith(".gz"):
-            with gzip.open(args.table, "rt") as f:
-                header = f.readline()
-        else:
-            with open(args.table, "r", encoding='utf-8', errors='ignore') as f:
-                header = f.readline()
-        if "path" in header:
-            df = pd.read_table(args.table)
-            if df["path"].iloc[0].endswith(".cram") or df["path"].iloc[0].endswith(".bam"):
-                if not args.fasta:
-                    sys.exit("ERROR: please provide a reference fasta file with --fasta")
     if args.table:
         if args.groups:
             sys.exit("ERROR: --groups is not supported when input is a table")
@@ -748,7 +754,7 @@ def meth_browser(app, args, gff_file):
                 color_scale,
                 args.output,
             )
-            return html.Div(dcc.Graph(figure=fig), id="plot"), None  
+            return html.Div(dcc.Graph(figure=fig), id="plot"), None
 
     return html.Div(id="plot")
 
