@@ -28,7 +28,7 @@ If this application is useful for your research, please cite:
 
 #### INPUT POSSIBILITIES
 
-The methylmap web application supports the visualization of own modification frequencies data by uploading a tab separated .tsv file. The file should contain the following columns: "chrom", "position", "sample_1", "sample_2", ... "sample_n". Example:
+The methylmap web application supports the visualization of own modification frequencies data by uploading a tab separated .tsv/.tsv.gz file. The file should contain the following columns: "chrom", "position", "sample_1", "sample_2", ... "sample_n". Example:
 
 ```text
 chrom position sample_1 sample_2 sample_3 sample_4
