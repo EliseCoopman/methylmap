@@ -480,7 +480,7 @@ def main():
                                     [
                                         html.P(
                                             [
-                                                "Drag and drop your .tsv modification frequency table, enter your genomic region of interest and click on the 'Confirm' button."
+                                                "Drag and drop your .tsv modification frequency table, enter your genomic region of interest and click on the 'Confirm' button. Please note that the maximum allowed file size is 100MB."
                                             ],
                                             style={
                                                 "textAlign": "center",
@@ -526,12 +526,11 @@ def main():
                                 multiple=False,
                                 max_size=100000000,
                             ),
-                            # Now using dcc.Loading to show the spinner after upload
                             dcc.Loading(
                                 id="upload-loading",
                                 type="default",
                                 children=html.Div(
-                                    id="loading-content",  # Content that will show loading indicator
+                                    id="loading-content",
                                 ),
                             ),
                             dbc.Container(

@@ -39,6 +39,9 @@ chr1 100002.0 0.000 0.000 0.000 0.000
 chr1 100003.0 0.000 0.000 0.000 0.000
 ```
 
+The maximum file size is 100MB.
+
+
 #### GENERATING A METHYLATION FREQUENCY TABLE WITH THE MULTIPARSETABLE.PY SCRIPT
 
 The required input table can be generated using the multiparsetable.py script, that supports the following input possibilities:
@@ -63,6 +66,7 @@ python multiparsetable.py --files nanopolishfileA.tsv nanopolishfileB.tsv --outp
   - <https://www.gencodegenes.org/mouse/>:                  Release M36 (GRCm39) - comprehensive gene annotation
 
   If you would like to use another annotation file, please upload your request through the Github Issues page.
+
 
 ### METHYLMAP COMMAND LINE TOOL
 
