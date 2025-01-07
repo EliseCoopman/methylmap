@@ -9,6 +9,7 @@ from methylmap.version import __version__
 
 import os
 import re
+import io
 import sys
 import json
 import glob
@@ -473,7 +474,6 @@ def main():
                                     "padding-left": "20px",
                                 },
                             ),
-                            # Removed dcc.Loading around upload-data
                             dcc.Upload(
                                 id="upload-data",
                                 children=html.Div(
@@ -826,9 +826,44 @@ def main():
         State("upload-data", "filename"),
     )
     def process_upload(contents, filename):
+        print(filename)
         if contents is None:
             return [html.Div()]
-        return html.Div(
+
+        if not (filename.endswith('.tsv') or filename.endswith('.tsv.gz')):
+            return html.Div(
+            [
+                html.H5(
+                    f"Error: Only .tsv or .tsv.gz files are allowed. The file '{filename}' has an invalid extension.",
+                    style={"fontSize": "12px", "margin": "8px", "color": "red"},
+                ),
+            ]
+        )
+
+        import base64
+        content_type, content_string = contents.split(",")
+        decoded_content = base64.b64decode(content_string)
+        
+        try:
+            if filename.endswith(".gz"):
+                with gzip.open(io.BytesIO(decoded_content), "rt", encoding="utf-8") as f:
+                    header = f.readline().strip()
+            else:
+                with io.StringIO(decoded_content.decode("utf-8")) as f:
+                    header = f.readline().strip()
+                    print(header)
+            if 'chrom' not in header or 'position' not in header:
+                print("chrom or position not in header")
+                return html.Div(
+                [
+                    html.H5(
+                        f"Error: The file '{filename}' must have 'chrom' and 'position' columns in the first row.",
+                        style={"fontSize": "12px", "margin": "8px", "color": "red"},
+                    ),
+                ]
+            )
+
+            return html.Div(
             [
                 html.H5(
                     f"File '{filename}' uploaded successfully. Please enter a genomic region and click on the 'Confirm' button.",
@@ -836,6 +871,15 @@ def main():
                         "fontSize": "12px",
                         "margin": "8px",
                     },
+                ),
+            ]
+        )
+        except Exception as e:
+            return html.Div(
+            [
+                html.H5(
+                    f"Error: Could not process the file '{filename}'. Please ensure it's a valid .tsv or .tsv.gz file.",
+                    style={"fontSize": "12px", "margin": "8px", "color": "red"},
                 ),
             ]
         )
