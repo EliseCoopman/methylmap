@@ -551,7 +551,8 @@ def get_args():
             with gzip.open(args.table, "rt") as f:
                 header = f.readline()
         else:
-            header = open(args.table, "r").readline()
+            with open(args.table, "r", encoding='utf-8', errors='ignore') as f:
+                header = f.readline()
         if "path" in header:
             df = pd.read_table(args.table)
             if df["path"].iloc[0].endswith(".cram") or df["path"].iloc[0].endswith(".bam"):
