@@ -85,10 +85,10 @@ chr1 100002.0 0.000 0.000 0.000 0.000
 chr1 100003.0 0.000 0.000 0.000 0.000
 ```
 
-- a tab separated file with an overview table containing all nanopolish or BAM/CRAM files and their sample name and experimental group (header requires "path", "name" and "group"). Use --table input option. When using BAM/CRAM files, please provide the reference genome with the --fasta argument. Example:
+- a tab separated file with an overview table containing all nanopolish or BAM/CRAM files and their sample name and experimental group (header requires "file", "name" and "group"). Use --tsv input option. When using BAM/CRAM files, please provide the reference genome with the --fasta argument. Example:
 
 ```text
-path    name    group
+file    name    group
 /home/path_to_file/bamfile_sample_1.bam   samplename_1    case
 /home/path_to_file/bamfile_sample_2.bam   samplename_2    control
 /home/path_to_file/bamfile_sample_3.bam   samplename_3    control
