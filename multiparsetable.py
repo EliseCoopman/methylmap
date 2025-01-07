@@ -67,7 +67,11 @@ def get_args():
         type=int,
         default=12,
     )
-    parser.add_argument("--round", help="make the file smaller by rounding the values to integers", action="store_true")
+    parser.add_argument(
+        "--round",
+        help="make the file smaller by rounding the values to integers",
+        action="store_true",
+    )
     parser.add_argument("--quiet", action="store_true", help="suppress modkit output")
     args = parser.parse_args()
     if args.files:
@@ -88,7 +92,9 @@ def get_args():
             sys.exit(f"ERROR: file {args.tsv} does not exist, please check the path!")
         tsv_df = pd.read_csv(args.tsv, sep="\t")
         if not all(col in tsv_df.columns for col in ["file", "name"]):
-            sys.exit("ERROR: provide a TSV file with minimally columns 'file' and 'name'")
+            sys.exit(
+                "ERROR: provide a TSV file with minimally columns 'file' and 'name'"
+            )
         args.files = tsv_df["file"].tolist()
         args.names = tsv_df["name"].tolist()
         if "group" in tsv_df.columns:
@@ -114,9 +120,9 @@ def main():
         if args.round:
             overviewtable = overviewtable.round(0)
         if args.output:
-            overviewtable.to_csv(args.output, sep="\t", na_rep='NA', header=True)
+            overviewtable.to_csv(args.output, sep="\t", na_rep="NA", header=True)
         else:
-            print(overviewtable.to_csv(sep="\t", na_rep='NA', header=True))
+            print(overviewtable.to_csv(sep="\t", na_rep="NA", header=True))
     except Exception as e:
         logging.error("Error processing input file(s).")
         logging.error(e, exc_info=True)
@@ -245,7 +251,9 @@ def process_modkit_tsv(filename, name):
         "Nnocall",
     ]
     if not Path(filename).is_file():
-        sys.exit(f"\n\nERROR: File {filename} for {name} does not exist, please check the path and log!\n")
+        sys.exit(
+            f"\n\nERROR: File {filename} for {name} does not exist, please check the path and log!\n"
+        )
     logging.info(f"Reading the modkit file for {name} in a dataframe.")
     df = pd.read_table(
         filename,
@@ -352,22 +360,17 @@ def parse_nanopolish(args, window):
 
     if args.files:
         if args.groups:
-            if args.dendro:
-                err = "Columns will not be sorted based on --group input since hierarchical clustering with --dendro is requested."
-                logging.warning(err)
-                sys.stderr.write(err)
+            logging.info("Sort columns of modfrequencytable based on group")
+            headerlist = list(modfrequencytable.columns.values)
+            if len(headerlist) - 2 == len(args.groups):
+                res = zip(headerlist, args.groups)
+                output = sorted(list(res), key=lambda x: x[1])
+                orderedlist = [i[0] for i in output]
+                modfrequencytable = modfrequencytable.reindex(columns=orderedlist)
             else:
-                logging.info("Sort columns of modfrequencytable based on group")
-                headerlist = list(modfrequencytable.columns.values)
-                if len(headerlist) == len(args.groups):
-                    res = zip(headerlist, args.groups)
-                    output = sorted(list(res), key=lambda x: x[1])
-                    orderedlist = [i[0] for i in output]
-                    modfrequencytable = modfrequencytable.reindex(columns=orderedlist)
-                else:
-                    sys.exit(
-                        f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
-                    )
+                sys.exit(
+                    f"ERROR when matching --groups with samples, is length of --groups list ({len(args.groups)}) matching with number of sample files?"
+                )
     modfrequencytable.set_index(["chrom"], inplace=True)
     modfrequencytable["position"] = (
         modfrequencytable["position"].astype(float).astype(int)
