@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from argparse import ArgumentParser
 
+
 def get_args():
     parser = ArgumentParser(description="Create heatmap of methylation frequencies.")
     parser.add_argument("--input", nargs="+", help="input file")

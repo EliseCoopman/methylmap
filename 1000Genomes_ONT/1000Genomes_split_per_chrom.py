@@ -1,11 +1,11 @@
 import os
 import sys
-import numpy as np
 import pandas as pd
 from argparse import ArgumentParser
 
+
 def get_args():
-    parser = ArgumentParser(description="Create heatmap of methylation frequencies.")
+    parser = ArgumentParser(description="Split 1000Genomes data per chromosome")
     parser.add_argument("--input", help="input file")
     parser.add_argument("--outputdir", help="output file")
     return parser.parse_args()
@@ -36,12 +36,22 @@ def split_by_chromosome(df):
     }
 
 
+# Main function
 args = get_args()
 
-
+# Process the input file
 df, basename_noextension = process_file(args.input)
 chromosome_data = split_by_chromosome(df)
 
-for chrom, data in chromosome_data.items():
+# Define all possible chromosomes (adjusted to match your input format with 'chr' prefix)
+all_chromosomes = ["chr" + str(i) for i in range(1, 23)] + ["chrX", "chrY", "chrM"]
+
+# Iterate over all chromosomes and handle missing ones
+for chrom in all_chromosomes:
     output_file = os.path.join(args.outputdir, f"{basename_noextension}_{chrom}.tsv")
-    data.to_csv(output_file, sep="\t", header=True, index=True)
+    if chrom in chromosome_data:
+        chromosome_data[chrom].to_csv(output_file, sep="\t", header=True, index=True)
+    else:
+        # Create an empty file for missing chromosomes
+        with open(output_file, "w") as f:
+            f.write("")  # Empty file
