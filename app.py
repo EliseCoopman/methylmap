@@ -183,13 +183,13 @@ def main():
                                                                     href="https://s3.amazonaws.com/1000g-ont/index.html?prefix=ALIGNMENT_AND_ASSEMBLY_DATA/FIRST_100/IN-HOUSE_MINIMAP2/HG38/",
                                                                     target="_blank",
                                                                 ),
-                                                                ", selected for only having 5mC callling, and further processed according to the pipeline ",
+                                                                ", selected for only being base/modification called with dorado (5mCG and 5hmCG model), and further processed according to ",
                                                                 html.A(
                                                                     "the pipeline",
                                                                     href="https://github.com/EliseCoopman/methylmap/blob/main/1000Genomes/1000Genomes_snakemake.smk",
                                                                 ),
                                                                 " available at the methylmap Github page. ",
-                                                                "In total, 76 samples were processed, resulting in visualization of 152 haplotypes that can be consulted in the 'ONT 1000Genomes' tab.",
+                                                                "In total, 226 samples were processed, resulting in visualization of 452 haplotypes that can be consulted in the 'ONT 1000Genomes' tab.",
                                                             ],
                                                             style={
                                                                 "textAlign": "justify"
