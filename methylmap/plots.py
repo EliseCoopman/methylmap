@@ -63,9 +63,9 @@ def plot_methylation(subplots, meth_data, num_col, num_row, color_scale):
     )
 
     fig.update_yaxes(
-        tickfont=dict(size=10), row=num_row, col=num_col, autorange="reversed"
+        tickfont=dict(size=12), row=num_row, col=num_col, autorange="reversed"
     )
-    fig.update_xaxes(tickangle=45, tickfont=dict(size=4), row=num_row, col=num_col)
+    fig.update_xaxes(tickangle=45, tickfont=dict(size=6), row=num_row, col=num_col)
     cmaps = {
         "plasma": "Plasma",
         "greys": "Greys",
